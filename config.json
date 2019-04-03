@@ -1,0 +1,7 @@
+{
+  "source": "example/src",
+  "destination": "example/dist",
+  "svgo": {
+    "encode": true
+  }
+}
