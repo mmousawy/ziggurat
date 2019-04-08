@@ -27,6 +27,7 @@ A complete development toolchain for building websites including a simple dynami
 
 ## To do
 
+- [ ] Add example project
 - [ ] Better configurability with config.json
 - [ ] Favicon generation
 - [ ] Custom page type handling
