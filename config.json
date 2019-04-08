@@ -1,6 +1,7 @@
 {
   "source": "example/src",
   "destination": "example/dist",
+  "port": 5050,
   "svgo": {
     "encode": true
   }
