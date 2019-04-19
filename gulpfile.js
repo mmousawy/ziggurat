@@ -103,30 +103,6 @@ function htmlTask() {
   ], { base: config.source })
   .pipe(map(inlineSvgHTML()))
   .pipe(newer(config.destination))
-  .pipe(map((file, cb) => {
-    let content = file.contents.toString();
-    let m, dimensions, match;
-
-    while ((m = regex.exec(content)) !== null) {
-      match = m[1];
-
-      const imageLocation = `${config.destination}/${match}`;
-
-      if (fs.existsSync(imageLocation)) {
-        dimensions = sizeOf(imageLocation);
-
-        const ratio = dimensions.height / dimensions.width;
-
-        content =
-          content.substr(0, m.index + 8) +
-          ` style="padding-top:${(ratio * 100).toFixed(2)}%"` +
-          content.substr(m.index + 8);
-      }
-    }
-
-    file.contents = Buffer.from(content, 'binary');
-    return cb(null, file);
-  }))
   .pipe(gulp.dest(config.destination))
 }
 
