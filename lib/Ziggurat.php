@@ -232,6 +232,7 @@ class Ziggurat
     $resolvedPage = [
       'page-type' => 'page',
       'path'      => $foundPage['path'],
+      'slug-path' => $foundPage['slug-path'],
       'ancestors' => $foundPage['ancestors']
     ];
 

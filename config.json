@@ -1,6 +1,6 @@
 {
-  "source": "example/src",
-  "destination": "example/dist",
+  "source": "example/murtada.nl-ziggurat/src",
+  "destination": "example/murtada.nl-ziggurat/dist",
   "port": 5050,
   "svgo": {
     "encode": true
