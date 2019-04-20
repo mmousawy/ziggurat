@@ -159,6 +159,10 @@ class Ziggurat
     preg_match_all($pattern, $renderedPage, $matches, PREG_SET_ORDER);
 
     foreach ($matches as $match) {
+      if (!file_exists($match['url'])) {
+        continue;
+      }
+
       $dimensions = getimagesize($match['url']);
       $ratio = $dimensions[1] / $dimensions[0];
       $ratio = round($ratio * 100, 2);
