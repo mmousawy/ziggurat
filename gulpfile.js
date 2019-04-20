@@ -6,7 +6,6 @@ const gulp         = require('gulp'),
       map          = require('map-stream'),
       querystring  = require('querystring'),
       newer        = require('gulp-newer'),
-      inline       = require('gulp-inline'),
       scss         = require('gulp-sass'),
       csso         = require('gulp-csso'),
       autoprefixer = require('gulp-autoprefixer'),
@@ -15,7 +14,6 @@ const gulp         = require('gulp'),
       uglify       = require('gulp-uglify-es').default,
       notify       = require('gulp-notify'),
       pngToJpeg    = require('png-to-jpeg'),
-      sizeOf       = require('image-size'),
       imagemin     = require('gulp-imagemin'),
       responsive   = require('gulp-responsive'),
       connect      = require('gulp-connect-php'),
@@ -24,6 +22,9 @@ const gulp         = require('gulp'),
 
 // Config
 const config = require('./config.json');
+
+// BrowserSync reload
+const reload = browserSync.reload;
 
 // Initialise SVGO
 const SVGO = require('svgo');
@@ -245,49 +246,47 @@ function jsTaskBuild() {
 function serve(done) {
   connect.server({
     base: config.destination,
-    port: config.port,
+    port: parseInt(config.port) + 1,
     keepalive: true
   });
 
-  console.log(`---------------------------------------------------------------`);
-  console.log(
-`███████╗██╗ ██████╗  ██████╗ ██╗   ██╗██████╗  █████╗ ████████╗
-╚══███╔╝██║██╔════╝ ██╔════╝ ██║   ██║██╔══██╗██╔══██╗╚══██╔══╝
-  ███╔╝ ██║██║  ███╗██║  ███╗██║   ██║██████╔╝███████║   ██║
- ███╔╝  ██║██║   ██║██║   ██║██║   ██║██╔══██╗██╔══██║   ██║
-███████╗██║╚██████╔╝╚██████╔╝╚██████╔╝██║  ██║██║  ██║   ██║
-╚══════╝╚═╝ ╚═════╝  ╚═════╝  ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   `);
-  console.log(`---------------------------------------------------------------`);
-  console.log(`Listening at: http://127.0.0.1:${config.port}`);
-  console.log(`Showing PHP log below:`);
-
-  done();
-}
-
-// BrowserSync reload
-function reloadTask(done) {
-  browserSync.reload();
+  browserSync.init({
+    proxy: `127.0.0.1:${parseInt(config.port) + 1}`,
+    port: config.port,
+    open: true,
+    notify: false
+  });
 
   done();
 }
 
 // Watch
 function watchTask() {
-  gulp.watch(`${config.source}/assets/**/*.{jpg,png}`, gulp.series(imageAssetsTask, reloadTask));
+  gulp.watch(`${config.source}/assets/**/*.{jpg,png}`, gulp.series(imageAssetsTask, reload));
   gulp.watch([
     `${config.source}/assets/**/*`,
     `!${config.source}/assets/**/*.{fla,jpg,png}`,
     `!${config.source}/assets/**/_*.svg`,
     `${config.source}/assets/**/duotone.jpg`,
     `${config.source}/assets/**/duotone.webp`
-  ], gulp.series(otherAssetsTask, htmlTask, reloadTask));
+  ], gulp.series(otherAssetsTask, htmlTask, reload));
   gulp.watch([
     `${config.source}/**/*.php`,
     `${config.source}/**/*.md`
-  ], gulp.series(htmlTask, reloadTask));
+  ], gulp.series(htmlTask, reload));
   gulp.watch(`${config.source}/scss/**/*.scss`, scssTask);
-  gulp.watch(`${config.source}/script/**/*.js`, gulp.series(jsTask, reloadTask));
+  gulp.watch(`${config.source}/script/**/*.js`, gulp.series(jsTask, reload));
 }
+
+console.log(`---------------------------------------------------------------`);
+console.log(
+`███████╗██╗ ██████╗  ██████╗ ██╗   ██╗██████╗  █████╗ ████████╗
+╚══███╔╝██║██╔════╝ ██╔════╝ ██║   ██║██╔══██╗██╔══██╗╚══██╔══╝
+  ███╔╝ ██║██║  ███╗██║  ███╗██║   ██║██████╔╝███████║   ██║
+ ███╔╝  ██║██║   ██║██║   ██║██║   ██║██╔══██╗██╔══██║   ██║
+███████╗██║╚██████╔╝╚██████╔╝╚██████╔╝██║  ██║██║  ██║   ██║
+╚══════╝╚═╝ ╚═════╝  ╚═════╝  ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   `);
+console.log(`---------------------------------------------------------------`);
 
 // Default task
 gulp.task('default', gulp.series(clean, imageAssetsTask, gulp.parallel(otherAssetsTask, htmlTask, scssTask, jsTask), gulp.parallel(serve, watchTask)));
