@@ -13,6 +13,8 @@ A complete development toolchain for building websites including a simple dynami
 **Ziggurat core**:
 - Templating using PHP
 - Hierarchical page organisation
+- Simple page routing
+- Page list querying
 - Page indexing and caching
 - Basic HTML minification
 - Output compression using [Zlib](https://www.php.net/manual/en/book.zlib.php)
@@ -24,6 +26,8 @@ A complete development toolchain for building websites including a simple dynami
 - SCSS to CSS prefixing and compilation using [Autoprefixer](https://github.com/postcss/autoprefixer) and [node-sass](https://github.com/sass/node-sass)
 - ES6 uglification and transpilation to ES5 using [Terser](https://github.com/terser-js/terser) and [Babel](https://github.com/babel/babel)
 - SVG inlining (for SCSS and HTML)
+- Automatic image resizing through [gulp-responsive](https://github.com/mahnunchik/gulp-responsive)
+- Favicons/manifest generation using [Favicons](https://github.com/itgalaxy/favicons)
 
 
 ## To do
