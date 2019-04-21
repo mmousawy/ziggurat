@@ -18,22 +18,24 @@ const gulp         = require('gulp'),
       responsive   = require('gulp-responsive'),
       connect      = require('gulp-connect-php'),
       browserSync  = require('browser-sync').create(),
-      compression  = require('compression');
+      favicons     = require('gulp-favicons');
 
 // Config
 const config = require('./config.json');
 
+
 // BrowserSync reload
-const reload = browserSync.reload;
 
 // Initialise SVGO
 const SVGO = require('svgo');
 const svgo = new SVGO(config.svgo || {});
 
+
 // Clean
 function clean() {
-  return del(config.destination);
+  return del(config.dest);
 }
+
 
 // Image assets
 function imageAssetsTask() {
@@ -41,10 +43,10 @@ function imageAssetsTask() {
 
   return gulp.src(
     [
-      `${config.source}/assets/images/**/*.{jpg,png}`,
-      `!${config.source}/assets/images/duotone.jpg`
-    ], { base: config.source })
-  .pipe(newer(config.destination))
+      `${config.src}/assets/images/**/*.{jpg,png}`,
+      `!${config.src}/assets/images/duotone.jpg`
+    ], { base: config.src })
+  .pipe(newer(config.dest))
   .pipe(responsive({
     '**/*.*': [
       {
@@ -77,48 +79,62 @@ function imageAssetsTask() {
   .pipe(rename(path => {
     path.extname = '.jpg'
   }))
-  .pipe(gulp.dest(config.destination));
+  .pipe(gulp.dest(config.dest));
 }
+
 
 // Other assets
 function otherAssetsTask() {
   return gulp.src(
     [
-      `${config.source}/assets/**/*`,
-      `!${config.source}/assets/**/*.{fla,jpg,png,psd}`,
-      `!${config.source}/assets/**/_*.svg`,
-      `${config.source}/assets/**/duotone.jpg`,
-      `${config.source}/assets/**/duotone.webp`
-    ], { base: config.source })
-  .pipe(newer(config.destination))
-  .pipe(gulp.dest(config.destination));
+      `${config.src}/assets/**/*`,
+      `!${config.src}/assets/**/*.{fla,jpg,png,psd}`,
+      `!${config.src}/assets/**/_*.svg`,
+      `${config.src}/assets/**/duotone.jpg`,
+      `${config.src}/assets/**/duotone.webp`
+    ], { base: config.src })
+  .pipe(newer(config.dest))
+  .pipe(gulp.dest(config.dest))
+  &&
+  gulp.src(`${config.dest}/favicons/favicon.ico`)
+  .pipe(gulp.dest(config.dest));
 }
+
+
+// Favicon
+function faviconTask() {
+  return gulp.src(path.join(config.src, config.favicons.src),
+  { base: config.favicons.src })
+  .pipe(favicons(config.favicons.options))
+    .on('error', notify.onError('Favicon generator error: <%= error.message %>'))
+  .pipe(gulp.dest(path.join(config.dest, config.favicons.dest)));
+}
+
 
 // HTML
 function htmlTask() {
-  const regex = /<picture.+?data-src="(.+?)"/gms;
-
   return gulp.src([
-    `${config.source}/**/*.php`,
-    `${config.source}/**/*.md`
-  ], { base: config.source })
+    `${config.src}/**/*.php`,
+    `${config.src}/**/*.md`
+  ], { base: config.src })
   .pipe(map(inlineSvgHTML()))
-  .pipe(newer(config.destination))
-  .pipe(gulp.dest(config.destination))
+  .pipe(gulp.dest(config.dest));
 }
+
 
 // SCSS
 function scssTask() {
-  return gulp.src(`${config.source}/scss/style.scss`, { base: `${config.source}/scss`, allowEmpty: true })
+  return gulp.src(`${config.src}/scss/style.scss`, { base: `${config.src}/scss`, allowEmpty: true })
   .pipe(scss({ outputStyle: 'compressed' }))
     .on('error', notify.onError('SCSS compile error: <%= error.message %>'))
   .pipe(autoprefixer({ browsers: 'last 2 versions' }))
   .pipe(map(inlineSvgCSS()))
     .on('error', notify.onError('Inline SVG error: <%= error.message %>'))
   .pipe(csso())
-  .pipe(gulp.dest(config.destination))
+  .pipe(gulp.dest(config.dest))
   .pipe(browserSync.stream());
 }
+
 
 // Inline SVG into HTML
 function inlineSvgHTML(file, cb) {
@@ -135,7 +151,7 @@ function inlineSvgHTML(file, cb) {
 
       // Attempt to read the SVG file
       svgContents = fs.readFileSync(
-        path.join(config.source, svgPath)
+        path.join(config.src, svgPath)
       ).toString('utf8');
 
       svgContents = svgContents.replace(/<svg\s(.+?)>/, `<svg $1 ${svgAttributes}>`);
@@ -157,6 +173,7 @@ function inlineSvgHTML(file, cb) {
   }
 }
 
+
 // Inline SVG into CSS
 function inlineSvgCSS(file, cb) {
   return async (file, cb) => {
@@ -177,7 +194,7 @@ function inlineSvgCSS(file, cb) {
 
       // Attempt to read the SVG file
       svgContents = fs.readFileSync(
-        path.join(config.source, svgPath)
+        path.join(config.src, svgPath)
       ).toString('utf8');
 
       // Loop through all occurences of the variable pattern
@@ -224,28 +241,31 @@ function inlineSvgCSS(file, cb) {
   }
 }
 
+
 // JS
 function jsTask() {
-  return gulp.src(`${config.source}/script/script.js`, { base: `${config.source}/script`, allowEmpty: true })
+  return gulp.src(`${config.src}/script/script.js`, { base: `${config.src}/script`, allowEmpty: true })
   .pipe(rename('script.min.js'))
-  .pipe(gulp.dest(config.destination));
+  .pipe(gulp.dest(config.dest));
 }
+
 
 // JS
 function jsTaskBuild() {
-  return gulp.src(`${config.source}/script/script.js`, { base: `${config.source}/script`, allowEmpty: true })
+  return gulp.src(`${config.src}/script/script.js`, { base: `${config.src}/script`, allowEmpty: true })
   .pipe(babel({
       presets: ['@babel/env']
   }))
   .pipe(rename('script.min.js'))
   .pipe(uglify())
-  .pipe(gulp.dest(config.destination));
+  .pipe(gulp.dest(config.dest));
 }
+
 
 // Serve
 function serve(done) {
   connect.server({
-    base: config.destination,
+    base: config.dest,
     port: parseInt(config.port) + 1,
     keepalive: true
   });
@@ -260,37 +280,44 @@ function serve(done) {
   done();
 }
 
+
 // Watch
 function watchTask() {
-  gulp.watch(`${config.source}/assets/**/*.{jpg,png}`, gulp.series(imageAssetsTask, reload));
+  gulp.watch(`${config.src}/assets/**/*.{jpg,png}`, gulp.series(imageAssetsTask, reload));
+
   gulp.watch([
-    `${config.source}/assets/**/*`,
-    `!${config.source}/assets/**/*.{fla,jpg,png}`,
-    `!${config.source}/assets/**/_*.svg`,
-    `${config.source}/assets/**/duotone.jpg`,
-    `${config.source}/assets/**/duotone.webp`
+    `${config.src}/assets/**/*`,
+    `!${config.src}/assets/**/*.{fla,jpg,png}`,
+    `!${config.src}/assets/**/_*.svg`,
+    `${config.src}/assets/**/duotone.jpg`,
+    `${config.src}/assets/**/duotone.webp`
   ], gulp.series(otherAssetsTask, htmlTask, reload));
+
   gulp.watch([
-    `${config.source}/**/*.php`,
-    `${config.source}/**/*.md`
+    `${config.src}/**/*.php`,
+    `${config.src}/**/*.md`
   ], gulp.series(htmlTask, reload));
-  gulp.watch(`${config.source}/scss/**/*.scss`, scssTask);
-  gulp.watch(`${config.source}/script/**/*.js`, gulp.series(jsTask, reload));
+
+  gulp.watch(`${config.src}/scss/**/*.scss`, scssTask);
+
+  gulp.watch(`${config.src}/script/**/*.js`, gulp.series(jsTask, reload));
 }
 
-console.log(`---------------------------------------------------------------`);
-console.log(
-`███████╗██╗ ██████╗  ██████╗ ██╗   ██╗██████╗  █████╗ ████████╗
+
+// Default task
+gulp.task('default', gulp.series(clean, faviconTask, imageAssetsTask, gulp.parallel(otherAssetsTask, htmlTask, scssTask, jsTask), gulp.parallel(serve, watchTask)));
+
+gulp.task('deploy', gulp.series(clean, faviconTask, imageAssetsTask, gulp.parallel(otherAssetsTask, htmlTask, scssTask, jsTaskBuild), gulp.parallel(serve, watchTask)));
+
+gulp.task('skipAssets', gulp.series(gulp.parallel(htmlTask, scssTask, jsTask), gulp.parallel(serve, watchTask)));
+
+
+// ASCII flair
+console.log(`---------------------------------------------------------------
+███████╗██╗ ██████╗  ██████╗ ██╗   ██╗██████╗  █████╗ ████████╗
 ╚══███╔╝██║██╔════╝ ██╔════╝ ██║   ██║██╔══██╗██╔══██╗╚══██╔══╝
   ███╔╝ ██║██║  ███╗██║  ███╗██║   ██║██████╔╝███████║   ██║
  ███╔╝  ██║██║   ██║██║   ██║██║   ██║██╔══██╗██╔══██║   ██║
 ███████╗██║╚██████╔╝╚██████╔╝╚██████╔╝██║  ██║██║  ██║   ██║
-╚══════╝╚═╝ ╚═════╝  ╚═════╝  ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   `);
-console.log(`---------------------------------------------------------------`);
-
-// Default task
-gulp.task('default', gulp.series(clean, imageAssetsTask, gulp.parallel(otherAssetsTask, htmlTask, scssTask, jsTask), gulp.parallel(serve, watchTask)));
-
-gulp.task('deploy', gulp.series(clean, imageAssetsTask, gulp.parallel(otherAssetsTask, htmlTask, scssTask, jsTaskBuild), gulp.parallel(serve, watchTask)));
-
-gulp.task('skipAssets', gulp.series(clean, gulp.parallel(htmlTask, scssTask, jsTask), gulp.parallel(serve, watchTask)));
+╚══════╝╚═╝ ╚═════╝  ╚═════╝  ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝
+---------------------------------------------------------------`);

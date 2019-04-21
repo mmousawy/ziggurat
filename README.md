@@ -29,7 +29,6 @@ A complete development toolchain for building websites including a simple dynami
 ## To do
 
 - [ ] Better configurability with config.json
-- [ ] Favicon generation
 - [ ] Custom page type handling
 - [ ] Automatic pages/posts list
 - [ ] Deployment integration?
@@ -38,4 +37,6 @@ A complete development toolchain for building websites including a simple dynami
 
 ## Done
 
+- [x] Automatic pages/posts list (added on: 2019-04-19)
 - [x] Add example project (added on: 2019-04-20)
+- [x] Favicon generation (added on: 2019-04-21)

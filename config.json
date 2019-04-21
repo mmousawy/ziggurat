@@ -1,8 +1,18 @@
 {
-  "source": "example/murtada.nl-ziggurat/src",
-  "destination": "example/murtada.nl-ziggurat/dist",
+  "src": "example/murtada.nl-ziggurat/src",
+  "dest": "example/murtada.nl-ziggurat/dist",
   "port": 5050,
   "svgo": {
     "encode": true
+  },
+  "favicons": {
+    "src": "favicon.png",
+    "dest": "favicons",
+    "options": {
+      "path": "/favicons/",
+      "appName": "Murtada.nl website",
+      "appShortName": "Murtada.nl",
+      "appDescription": "Personal portfolio and blog of Murtada al Mousawy"
+    }
   }
 }
