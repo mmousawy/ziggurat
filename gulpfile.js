@@ -25,6 +25,11 @@ const config = require('./config.json');
 
 
 // BrowserSync reload
+const reload = (done) => {
+  browserSync.reload();
+  done();
+}
+
 
 // Initialise SVGO
 const SVGO = require('svgo');
