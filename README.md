@@ -30,6 +30,7 @@ A complete development toolchain for building websites including a simple dynami
 
 - [ ] Better configurability with config.json
 - [ ] Custom page type handling
+- [ ] Custom page status handling (i.e. 404 pages)
 - [ ] Deployment integration?
 - [ ] Hook for custom templating engine?
 
