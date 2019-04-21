@@ -30,7 +30,6 @@ A complete development toolchain for building websites including a simple dynami
 
 - [ ] Better configurability with config.json
 - [ ] Custom page type handling
-- [ ] Automatic pages/posts list
 - [ ] Deployment integration?
 - [ ] Hook for custom templating engine?
 
