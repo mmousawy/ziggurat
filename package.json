@@ -48,6 +48,7 @@
   },
   "dependencies": {
     "favicons": "^5.3.0",
-    "gulp-favicons": "^2.3.0"
+    "gulp-favicons": "^2.3.0",
+    "imagemin-pngquant": "^7.0.0"
   }
 }

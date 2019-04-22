@@ -15,6 +15,7 @@ const gulp         = require('gulp'),
       notify       = require('gulp-notify'),
       pngToJpeg    = require('png-to-jpeg'),
       imagemin     = require('gulp-imagemin'),
+      pngquant     = require('imagemin-pngquant'),
       responsive   = require('gulp-responsive'),
       connect      = require('gulp-connect-php'),
       browserSync  = require('browser-sync').create(),
@@ -49,6 +50,7 @@ function imageAssetsTask() {
   return gulp.src(
     [
       `${config.src}/assets/images/**/*.{jpg,png}`,
+      `!${config.src}/assets/images/**/_*.png`,
       `!${config.src}/assets/images/duotone.jpg`
     ], { base: config.src })
   .pipe(newer(config.dest))
@@ -84,6 +86,50 @@ function imageAssetsTask() {
   .pipe(rename(path => {
     path.extname = '.jpg'
   }))
+  .pipe(gulp.dest(config.dest))
+
+  &&
+
+  gulp.src(
+    [
+      `${config.src}/assets/images/**/_*.png`,
+    ], { base: config.src })
+  .pipe(newer(config.dest))
+  .pipe(responsive({
+    '**/*.*': [
+      {
+        width: baseWidth,
+        rename: {
+          suffix: `-${baseWidth}px`,
+          extname: '.png'
+        }
+      }, {
+        width: baseWidth * 2,
+        rename: {
+          suffix: `-${baseWidth * 2}px`,
+          extname: '.png'
+        }
+      }, {
+        width: baseWidth * 3.75,
+        rename: {
+          suffix: `-${baseWidth * 3.75}px`,
+          extname: '.png'
+        }
+      }
+    ]
+  },
+  {
+    withMetadata: false,
+    errorOnEnlargement: false,
+    errorOnUnusedConfig: false
+  }))
+  .pipe(imagemin([
+    pngquant({
+      speed: 1,
+      strip: true,
+      dithering: 1
+    })
+  ]))
   .pipe(gulp.dest(config.dest));
 }
 
@@ -101,7 +147,7 @@ function otherAssetsTask() {
   .pipe(newer(config.dest))
   .pipe(gulp.dest(config.dest))
   &&
-  gulp.src(`${config.dest}/favicons/favicon.ico`)
+  gulp.src(`${config.dest}/favicons/favicon.ico`, { allowEmpty: true })
   .pipe(gulp.dest(config.dest));
 }
 
