@@ -297,6 +297,9 @@ function inlineSvgCSS(file, cb) {
 function jsTask() {
   return gulp.src(`${config.src}/script/script.js`, { base: `${config.src}/script`, allowEmpty: true })
   .pipe(rename('script.min.js'))
+  .pipe(gulp.dest(config.dest))
+  &&
+  gulp.src(`${config.src}/script/lib/*.js`, { base: `${config.src}`, allowEmpty: true })
   .pipe(gulp.dest(config.dest));
 }
 
@@ -309,6 +312,9 @@ function jsTaskBuild() {
   }))
   .pipe(rename('script.min.js'))
   .pipe(uglify())
+  .pipe(gulp.dest(config.dest))
+  &&
+  gulp.src(`${config.src}/script/lib/*.js`, { base: `${config.src}`, allowEmpty: true })
   .pipe(gulp.dest(config.dest));
 }
 
@@ -359,6 +365,8 @@ function watchTask() {
 gulp.task('default', gulp.series(clean, faviconTask, imageAssetsTask, gulp.parallel(otherAssetsTask, htmlTask, scssTask, jsTask), gulp.parallel(serve, watchTask)));
 
 gulp.task('deploy', gulp.series(clean, faviconTask, imageAssetsTask, gulp.parallel(otherAssetsTask, htmlTask, scssTask, jsTaskBuild), gulp.parallel(serve, watchTask)));
+
+gulp.task('skipFavicons', gulp.series(clean, imageAssetsTask, gulp.parallel(otherAssetsTask, htmlTask, scssTask, jsTask), gulp.parallel(serve, watchTask)));
 
 gulp.task('skipAssets', gulp.series(gulp.parallel(htmlTask, scssTask, jsTask), gulp.parallel(serve, watchTask)));
 
