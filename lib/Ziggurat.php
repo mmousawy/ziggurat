@@ -2,7 +2,7 @@
 
 namespace MMousawy;
 
-// require '../../Parsedown/Parsedown.php';
+require '../../../Parsedown/Parsedown.php';
 
 class Ziggurat
 {
@@ -19,7 +19,7 @@ class Ziggurat
   function __construct(array $options = [])
   {
     $this->pages = [];
-    // $this->Parsedown = new \Parsedown();
+    $this->Parsedown = new \Parsedown();
 
     $this->options = [
       'base_dir' => '.',
@@ -63,7 +63,7 @@ class Ziggurat
 
       // Read out file metadata
       // Match any string that has the following pattern:
-      // [//]: # (property: value)
+      // #zigg:property = `value`
       $pattern = '/#\s*zigg\s*:\s*([a-zA-Z0-9-_]+)\s*=\s*`([^`]+)/m';
       preg_match_all($pattern, $fileContents, $matches, PREG_SET_ORDER);
 
@@ -147,9 +147,18 @@ class Ziggurat
     require $page['path'];
     $this->resolvedPage['content'] = ob_get_clean();
 
+    // Render markdown file with Parsedown
+    if (isset($page['type']) && $page['type'] == 'markdown') {
+      $this->resolvedPage['content'] = $this->Parsedown->text($this->resolvedPage['content']);
+    }
+
     ob_start();
-    foreach ($this->options['template'] as $templatePart) {
-      require $templatePart;
+    foreach ($this->options['template'] as $partName => $templatePart) {
+      if ($partName === 'body' && isset($page['template'])) {
+        require $page['template'];
+      } else {
+        require $templatePart;
+      }
     }
     $renderedPage = ob_get_clean();
 
