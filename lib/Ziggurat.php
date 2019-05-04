@@ -9,10 +9,16 @@ class Ziggurat
   private $base_dir;
   private $pages_dir;
   private $pages;
-  private $sitemap;
   private $minify;
   private $Parsedown;
   private $options;
+  private $xmlSiteMapSchema = 'http://www.sitemaps.org/schemas/sitemap/0.9';
+
+  public $imageSizes = [
+    'small' => 512,
+    'medium' => 1024,
+    'large' => 1920
+  ];
 
   public $resolvedPage;
 
@@ -68,19 +74,32 @@ class Ziggurat
       preg_match_all($pattern, $fileContents, $matches, PREG_SET_ORDER);
 
       foreach ($matches as $match) {
-        $page['properties'][$match[1]] = $match[2];
+        if ($match[1] === 'cover-image') {
+          $page['properties'][$match[1]] = [];
+
+          if (strpos($match[2], '{$size}')) {
+            $coverImage = explode('{$size}', $match[2]);
+          }
+
+          foreach($this->imageSizes as $label => $pixels) {
+            $imageUrl = [
+              'url' => "assets/images/{$coverImage[0]}-{$pixels}px{$coverImage[1]}",
+              'size' => $pixels
+            ];
+
+            if (file_exists($imageUrl['url'])) {
+              $page['properties'][$match[1]][$label] = $imageUrl;
+            }
+          }
+        } else {
+          $page['properties'][$match[1]] = $match[2];
+        }
       }
 
-      array_push($this->pages, $page);
-    }
-
-    foreach ($this->pages as &$page) {
       $page['slug-path'] = $this->resolveSlugPath($page);
       $page['ancestors'] = explode('/', $page['slug-path']);
 
-      if ($this->options['enable_cache'] === true) {
-        $page['html'] = $this->render($page, true);
-      }
+      array_push($this->pages, $page);
     }
 
     usort($this->pages, function($item1, $item2) {
@@ -94,6 +113,12 @@ class Ziggurat
 
       return $item2['properties']['date'] <=> $item1['properties']['date'];
     });
+
+    foreach ($this->pages as &$page) {
+      if ($this->options['enable_cache'] === true) {
+        $page['html'] = $this->render($page, true);
+      }
+    }
 
     if ($this->options['enable_cache'] === true) {
       $this->saveCache();
@@ -148,14 +173,17 @@ class Ziggurat
     $this->resolvedPage['content'] = ob_get_clean();
 
     // Render markdown file with Parsedown
-    if (isset($page['type']) && $page['type'] == 'markdown') {
+    if ((isset($page['type']) && $page['type'] == 'markdown') || (isset($page['properties']['type']) && $page['properties']['type'] == 'markdown')) {
       $this->resolvedPage['content'] = $this->Parsedown->text($this->resolvedPage['content']);
     }
 
     ob_start();
+
     foreach ($this->options['template'] as $partName => $templatePart) {
-      if ($partName === 'body' && isset($page['template'])) {
-        require $page['template'];
+      $template = isset($page['template']) ? $page['template'] : isset($page['properties']['template']) ? $page['properties']['template'] : $templatePart;
+
+      if ($partName === 'body' && isset($template)) {
+        require $template;
       } else {
         require $templatePart;
       }
@@ -253,7 +281,7 @@ class Ziggurat
       $resolvedPage['html'] = $foundPage['html'];
     }
 
-    $resolvedPage = array_replace_recursive($resolvedPage, $foundPage['properties']);
+    $resolvedPage = $foundPage;
 
     if ($return) {
       return $resolvedPage;
