@@ -370,7 +370,7 @@ gulp.task('deploy', gulp.series(clean, faviconTask, imageAssetsTask, gulp.parall
 
 gulp.task('skipFavicons', gulp.series(clean, imageAssetsTask, gulp.parallel(otherAssetsTask, htmlTask, scssTask, jsTask), gulp.parallel(serve, watchTask)));
 
-gulp.task('skipAssets', gulp.series(gulp.parallel(htmlTask, scssTask, jsTask), gulp.parallel(serve, watchTask)));
+gulp.task('skipAssets', gulp.series(gulp.parallel(otherAssetsTask, htmlTask, scssTask, jsTask), gulp.parallel(serve, watchTask)));
 
 
 // ASCII flair
