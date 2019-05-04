@@ -21,14 +21,14 @@
   },
   "homepage": "https://github.com/mmousawy/ziggurat#readme",
   "devDependencies": {
-    "@babel/core": "^7.4.0",
-    "@babel/preset-env": "^7.4.2",
-    "browser-sync": "^2.26.3",
+    "@babel/core": "^7.4.4",
+    "@babel/preset-env": "^7.4.4",
+    "browser-sync": "^2.26.5",
     "compression": "^1.7.4",
-    "del": "^4.1.0",
+    "del": "^4.1.1",
     "fs": "0.0.1-security",
-    "gulp": "^4.0.0",
-    "gulp-autoprefixer": "^6.0.0",
+    "gulp": "^4.0.1",
+    "gulp-autoprefixer": "^6.1.0",
     "gulp-babel": "^8.0.0",
     "gulp-connect-php": "^1.0.3",
     "gulp-csso": "^3.0.1",
@@ -41,14 +41,14 @@
     "gulp-responsive": "^2.13.0",
     "gulp-sass": "^4.0.2",
     "gulp-uglify-es": "^1.0.4",
-    "image-size": "^0.7.3",
+    "image-size": "^0.7.4",
     "path": "^0.12.7",
     "png-to-jpeg": "^1.0.1",
-    "querystring": "^0.2.0"
-  },
-  "dependencies": {
+    "querystring": "^0.2.0",
     "favicons": "^5.3.0",
+    "gulp-cached": "^1.1.1",
     "gulp-favicons": "^2.3.0",
     "imagemin-pngquant": "^7.0.0"
-  }
+  },
+  "dependencies": {}
 }
