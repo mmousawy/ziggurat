@@ -53,7 +53,7 @@ function imageAssetsTask() {
       `!${config.src}/assets/images/**/_*.png`,
       `!${config.src}/assets/images/duotone.jpg`
     ], { base: config.src })
-  .pipe(newer(config.dest))
+  .pipe(cached('images-jpeg'))
   .pipe(responsive({
     '**/*.*': [
       {
@@ -94,7 +94,7 @@ function imageAssetsTask() {
     [
       `${config.src}/assets/images/**/_*.png`,
     ], { base: config.src })
-  .pipe(newer(config.dest))
+  .pipe(cached('images-png'))
   .pipe(responsive({
     '**/*.*': [
       {
@@ -144,7 +144,7 @@ function otherAssetsTask() {
       `${config.src}/assets/**/duotone.jpg`,
       `${config.src}/assets/**/duotone.webp`
     ], { base: config.src })
-  .pipe(newer(config.dest))
+  .pipe(cached('otherAssets'))
   .pipe(gulp.dest(config.dest))
   &&
   gulp.src(`${config.dest}/favicons/favicon.ico`, { allowEmpty: true })
