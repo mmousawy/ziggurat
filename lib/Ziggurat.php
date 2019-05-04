@@ -124,6 +124,8 @@ class Ziggurat
       $this->saveCache();
     }
 
+    $this->generateSiteMap();
+
     return true;
   }
 
@@ -150,6 +152,44 @@ class Ziggurat
     $this->pages = json_decode(file_get_contents('ziggurat-cache.json.php'), true);
 
     return true;
+  }
+
+
+  public function generateSiteMap(): bool
+  {
+    $xml = new \SimpleXMLElement('<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="' . $this->xmlSiteMapSchema . '"></urlset>');
+
+    $hostURL = stripos($_SERVER['SERVER_PROTOCOL'], 'https') ? 'https://' : 'http://' . $_SERVER['SERVER_NAME'];
+
+    $siteMapData = [];
+
+    foreach($this->pages as $page) {
+      $siteMapEntry = [
+        'url' => [
+          'loc' => $hostURL . ($page['slug-path'] === 'index' ? '' : ('/' . $page['slug-path'])),
+          'priority' => (isset($page['properties']['priority']) ? $page['properties']['priority'] : '0.1'),
+          'lastmod' => isset($page['properties']['date']) ? $page['properties']['date'] : date('Y-m-d', filemtime($page['path'])),
+          'changefreq' => 'weekly'
+        ]
+      ];
+
+      $this->toXML($xml, $siteMapEntry);
+    }
+
+    return $xml->asXML('sitemap.xml');
+  }
+
+
+  private function toXML(\SimpleXMLElement &$object, array $data)
+  {
+    foreach ($data as $key => $value) {
+      if (is_array($value)) {
+        $new_object = $object->addChild($key);
+        $this->toXML($new_object, $value);
+      } else {
+        $object->addChild("$key", htmlspecialchars("$value"));
+      }
+    }
   }
 
 
