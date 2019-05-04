@@ -215,7 +215,7 @@ function inlineSvgHTML(file, cb) {
 
       // Replace the matched string with the data URI
       fileContents = fileContents.slice(0, urlMatch.index)
-        + svgContents
+        + svgContents.trim()
         + fileContents.slice((urlMatch.index + urlMatch[0].length));
 
       urlPattern.lastIndex = (urlMatch.index + 1);
