@@ -5,7 +5,7 @@ const gulp         = require('gulp'),
       path         = require('path'),
       map          = require('map-stream'),
       querystring  = require('querystring'),
-      newer        = require('gulp-newer'),
+      cached       = require('gulp-cached'),
       scss         = require('gulp-sass'),
       csso         = require('gulp-csso'),
       autoprefixer = require('gulp-autoprefixer'),
@@ -138,6 +138,8 @@ function imageAssetsTask() {
 function otherAssetsTask() {
   return gulp.src(
     [
+      `${config.src}/robots.txt`,
+      `${config.src}/humans.txt`,
       `${config.src}/assets/**/*`,
       `!${config.src}/assets/**/*.{fla,jpg,png,psd}`,
       `!${config.src}/assets/**/_*.svg`,
