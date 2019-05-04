@@ -20,6 +20,7 @@ A complete development toolchain for building websites including a simple dynami
 - Output compression using [Zlib](https://www.php.net/manual/en/book.zlib.php)
 - Markdown in pages or posts with the help of [Parsedown](https://github.com/parsedown/parsedown)
 - Lazy loading image ratio calculation for `padding-top` trick
+- Automatic sitemap generator
 
 **Development tools**:
 - Live server with PHP support using [BrowserSync](https://github.com/BrowserSync/browser-sync) and [gulp-connect-php](https://github.com/micahblu/gulp-connect-php)
@@ -44,3 +45,4 @@ A complete development toolchain for building websites including a simple dynami
 - [x] Automatic pages/posts list (added on: 2019-04-19)
 - [x] Add example project (added on: 2019-04-20)
 - [x] Favicon generation (added on: 2019-04-21)
+- [x] Generate sitemap automatically (added on: 2019-05-04)
