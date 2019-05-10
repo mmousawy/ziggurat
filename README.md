@@ -42,7 +42,8 @@ A complete development toolchain for building websites including a simple dynami
 
 ## Done
 
-- [x] Automatic pages/posts list (added on: 2019-04-19)
-- [x] Add example project (added on: 2019-04-20)
-- [x] Favicon generation (added on: 2019-04-21)
-- [x] Generate sitemap automatically (added on: 2019-05-04)
+- [x] Automatic pages/posts list (added: 2019-04-19)
+- [x] Add example project (added: 2019-04-20)
+- [x] Favicon generation (added: 2019-04-21)
+- [x] Generate sitemap automatically (added: 2019-05-04)
+- [x] Allow custom 404 page (added: 2019-05-10)

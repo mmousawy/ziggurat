@@ -208,6 +208,11 @@ class Ziggurat
       return $page['html'];
     }
 
+    if (!isset($page)) {
+      header('HTTP/1.0 404 Not Found');
+      $page = $this->searchPage('404');
+    }
+
     ob_start();
     require $page['path'];
     $this->resolvedPage['content'] = ob_get_clean();
