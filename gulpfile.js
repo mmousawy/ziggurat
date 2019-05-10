@@ -192,7 +192,7 @@ function scssTask() {
 // Inline SVG into HTML
 function inlineSvgHTML(file, cb) {
   return async (file, cb) => {
-    const urlPattern = /<img\s?(.+)?\ssrc="([^"]+.svg)"([^>]+)?>/gmi;
+    const urlPattern = /<img\s?(.+)?\ssrc="([^"]+\/_.+svg)"([^>]+)?>/gmi;
     let fileContents = file.contents.toString('utf8');
     let urlMatch, svgPath, svgContents, svgAttributes;
 
