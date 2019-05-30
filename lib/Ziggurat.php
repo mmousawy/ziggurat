@@ -159,7 +159,7 @@ class Ziggurat
   {
     $xml = new \SimpleXMLElement('<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="' . $this->xmlSiteMapSchema . '"></urlset>');
 
-    $hostURL = stripos($_SERVER['SERVER_PROTOCOL'], 'https') ? 'https://' : 'http://' . $_SERVER['SERVER_NAME'];
+    $hostURL = ((isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? 'https://' : 'http://') . $_SERVER['SERVER_NAME'];
 
     $siteMapData = [];
 
