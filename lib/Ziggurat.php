@@ -96,9 +96,6 @@ class Ziggurat
         }
       }
 
-      $page['slug-path'] = $this->resolveSlugPath($page);
-      $page['ancestors'] = explode('/', $page['slug-path']);
-
       array_push($this->pages, $page);
     }
 
@@ -115,6 +112,9 @@ class Ziggurat
     });
 
     foreach ($this->pages as &$page) {
+      $page['slug-path'] = $this->resolveSlugPath($page);
+      $page['ancestors'] = explode('/', $page['slug-path']);
+
       if ($this->options['enable_cache'] === true) {
         $page['html'] = $this->render($page, true);
       }
@@ -372,7 +372,7 @@ class Ziggurat
       $path = 'index';
     }
 
-    foreach ($this->pages as &$page) {
+    foreach ($this->pages as $page) {
       if (!empty($page['slug-path'])) {
         if ($page['slug-path'] === $path) {
           return $page;
