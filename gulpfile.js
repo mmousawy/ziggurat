@@ -5,7 +5,7 @@ const gulp         = require('gulp'),
       path         = require('path'),
       map          = require('map-stream'),
       querystring  = require('querystring'),
-      cached       = require('gulp-cached'),
+      cache        = require('gulp-cached'),
       scss         = require('gulp-sass'),
       csso         = require('gulp-csso'),
       autoprefixer = require('gulp-autoprefixer'),
@@ -16,7 +16,7 @@ const gulp         = require('gulp'),
       notify       = require('gulp-notify'),
       pngToJpeg    = require('png-to-jpeg'),
       imagemin     = require('gulp-imagemin'),
-      pngquant     = require('imagemin-pngquant'),
+      pngQuant     = require('imagemin-pngquant'),
       connect      = require('gulp-connect-php'),
       browserSync  = require('browser-sync').create(),
       favicons     = require('gulp-favicons');
@@ -24,27 +24,26 @@ const gulp         = require('gulp'),
 // Config
 const config = require('./config.json');
 
-
 // BrowserSync reload
 const reload = (done) => {
   browserSync.reload();
   done();
 }
 
-
 // Initialise SVGO
 const SVGO = require('svgo');
 const svgo = new SVGO(config.svgo || {});
 
+
+// Tasks below
 
 // Clean
 function clean() {
   return del(config.dest);
 }
 
-
 // Image assets
-function imageAssetsTask(done) {
+async function imageAssetsTask(done) {
   const imageSizes = {
     jpg: [
       512,
@@ -57,72 +56,111 @@ function imageAssetsTask(done) {
     ]
   };
 
-  return imageSizes.jpg.forEach(size => {
-    gulp.src(
-      [
+  const sizesAmount = 5;
+  let processed = 0;
+
+  const checkResolved = (resolve) => {
+    processed++;
+
+    if (processed === sizesAmount) {
+      return resolve();
+    }
+  };
+
+  return await new Promise((resolve, reject) => {
+    imageSizes.jpg.forEach(size => {
+      gulp.src([
         `${config.src}/assets/images/**/*.{jpg,png}`,
         `!${config.src}/assets/images/**/_*.png`,
         `!${config.src}/assets/images/duotone.jpg`
       ], { base: config.src })
-    .pipe(map((file, cb) => {
-      return async (file, cb) => {
-        return cb(null, await sharp().resize({ width: size }));
-      }
-    }))
-    .pipe(imagemin([
-        pngToJpeg({ quality: 80 })
+      .pipe(cache(`assets-jpg-${size}`, { optimizeMemory: true }))
+      .pipe(
+        map(async (file, cb) => {
+          await sharp(file.contents)
+          .resize({
+            width: size,
+            withoutEnlargement: true
+          })
+          .png()
+          .toBuffer()
+          .then(data => {
+            file.contents = data;
+            cb(null, file);
+          });
+        })
+      )
+      .pipe(imagemin([
+        pngToJpeg({
+          quality: 80
+        })
       ], {
         optimize: true,
         grayscale: true,
         progressive: true
-    }))
-    .pipe(rename({
-      suffix: `-${size}px`,
-      extname: '.jpg'
-    }))
-    .pipe(gulp.dest(config.dest));
-  })
+      }))
+      .pipe(rename({
+        suffix: `-${size}px`,
+        extname: '.jpg'
+      }))
+      .pipe(gulp.dest(config.dest))
+      .on('end', checkResolved.bind(null, resolve));
+    });
 
-  &&
-
-  imageSizes.png.forEach(size => {
-    gulp.src(
-      [
+    imageSizes.png.forEach(size => {
+      gulp.src([
         `${config.src}/assets/images/**/_*.png`
       ], { base: config.src })
-    .pipe(map((file, cb) => {
-      return async (file, cb) => {
-        return cb(null, await sharp().resize({ width: size }));
-      }
-    }))
-    .pipe(imagemin([
-      pngquant({
-        speed: 1,
-        strip: true,
-        dithering: 1
-      })
-    ]))
-    .pipe(rename({
-      suffix: `-${size}px`
-    }))
-    .pipe(gulp.dest(config.dest));
+      .pipe(cache(`assets-png-${size}`, { optimizeMemory: true }))
+      .pipe(
+        map(async (file, cb) => {
+          await sharp(file.contents)
+          .resize({
+            width: size,
+            withoutEnlargement: true
+          })
+          .toBuffer()
+          .then(data => {
+            file.contents = data;
+            cb(null, file);
+          });
+        })
+      )
+      .pipe(imagemin([
+        pngQuant({
+          speed: 1,
+          strip: true,
+          dithering: 1,
+          quality: [.5, 1]
+        })
+      ], {
+        optimize: true,
+        grayscale: true,
+        progressive: true
+      }))
+      .pipe(rename({
+        suffix: `-${size}px`,
+        extname: '.png'
+      }))
+      .pipe(gulp.dest(config.dest))
+      .on('end', checkResolved.bind(null, resolve));
+    });
   });
 }
 
 
 // Other assets
 function otherAssetsTask() {
-  return gulp.src(
-    [
-      `${config.src}/robots.txt`,
-      `${config.src}/humans.txt`,
-      `${config.src}/assets/**/*`,
-      `!${config.src}/assets/**/*.{fla,jpg,png,psd}`,
-      `!${config.src}/assets/**/_*.svg`,
-      `${config.src}/assets/**/duotone.jpg`,
-      `${config.src}/assets/**/duotone.webp`
-    ], { base: config.src })
-  .pipe(cached('otherAssets'))
+  return gulp.src([
+    `${config.src}/robots.txt`,
+    `${config.src}/humans.txt`,
+    `${config.src}/assets/**/*`,
+    `!${config.src}/assets/**/*.{fla,jpg,png,psd,ai}`,
+    `!${config.src}/assets/**/_*.svg`,
+    `${config.src}/assets/**/duotone.jpg`,
+    `${config.src}/assets/**/duotone.webp`
+  ], { base: config.src })
+  .pipe(cache('assets-other', { optimizeMemory: true }))
   .pipe(gulp.dest(config.dest))
   &&
   gulp.src(`${config.dest}/favicons/favicon.ico`, { allowEmpty: true })
@@ -132,8 +170,9 @@ function otherAssetsTask() {
 
 // Favicon
 function faviconTask() {
-  return gulp.src(path.join(config.src, config.favicons.src),
-  { base: config.favicons.src })
+  return gulp.src(
+    path.join(config.src, config.favicons.src),
+    { base: config.favicons.src })
   .pipe(favicons(config.favicons.options))
     .on('error', notify.onError('Favicon generator error: <%= error.message %>'))
   .pipe(gulp.dest(path.join(config.dest, config.favicons.dest)));
@@ -153,7 +192,9 @@ function htmlTask() {
 
 // SCSS
 function scssTask() {
-  return gulp.src(`${config.src}/scss/style.scss`, { base: `${config.src}/scss`, allowEmpty: true })
+  return gulp.src(
+    `${config.src}/scss/style.scss`,
+    { base: `${config.src}/scss`, allowEmpty: true })
   .pipe(scss({ outputStyle: 'compressed' }))
     .on('error', notify.onError('SCSS compile error: <%= error.message %>'))
   .pipe(autoprefixer({ overrideBrowserslist: 'last 2 versions' }))
@@ -273,7 +314,9 @@ function inlineSvgCSS(file, cb) {
 
 // JS
 function jsTask() {
-  return gulp.src(`${config.src}/script/script.js`, { base: `${config.src}/script`, allowEmpty: true })
+  return gulp.src(
+    `${config.src}/script/script.js`,
+    { base: `${config.src}/script`, allowEmpty: true })
   .pipe(rename('script.min.js'))
   .pipe(gulp.dest(config.dest))
   &&
@@ -284,7 +327,9 @@ function jsTask() {
 
 // JS
 function jsTaskBuild() {
-  return gulp.src(`${config.src}/script/script.js`, { base: `${config.src}/script`, allowEmpty: true })
+  return gulp.src(
+    `${config.src}/script/script.js`,
+    { base: `${config.src}/script`, allowEmpty: true })
   .pipe(babel({
       presets: ['@babel/env']
   }))
@@ -340,13 +385,79 @@ function watchTask() {
 
 
 // Default task
-gulp.task('default', gulp.series(clean, faviconTask, imageAssetsTask, gulp.parallel(otherAssetsTask, htmlTask, scssTask, jsTask), gulp.parallel(serve, watchTask)));
+gulp.task('default',
+  gulp.series(
+    clean,
+    faviconTask,
+    imageAssetsTask,
 
-gulp.task('deploy', gulp.series(clean, faviconTask, imageAssetsTask, gulp.parallel(otherAssetsTask, htmlTask, scssTask, jsTaskBuild), gulp.parallel(serve, watchTask)));
+    gulp.parallel(
+      otherAssetsTask,
+      htmlTask,
+      scssTask,
+      jsTask
+    ),
 
-gulp.task('skipFavicons', gulp.series(clean, imageAssetsTask, gulp.parallel(otherAssetsTask, htmlTask, scssTask, jsTask), gulp.parallel(serve, watchTask)));
+    gulp.parallel(
+      serve,
+      watchTask
+    )
+  )
+);
 
-gulp.task('skipAssets', gulp.series(gulp.parallel(otherAssetsTask, htmlTask, scssTask, jsTask), gulp.parallel(serve, watchTask)));
+gulp.task('deploy',
+  gulp.series(
+    clean,
+    faviconTask,
+    imageAssetsTask,
+
+    gulp.parallel(
+      otherAssetsTask,
+      htmlTask,
+      scssTask,
+      jsTaskBuild
+    ),
+
+    gulp.parallel(
+      serve,
+      watchTask
+    )
+  )
+);
+
+gulp.task('skipFavicons',
+  gulp.series(
+    clean,
+    imageAssetsTask,
+
+    gulp.parallel(
+      otherAssetsTask,
+      htmlTask,
+      scssTask,
+      jsTask
+    ),
+
+    gulp.parallel(
+      serve,
+      watchTask
+    )
+  )
+);
+
+gulp.task('skipAssets',
+  gulp.series(
+    gulp.parallel(
+      otherAssetsTask,
+      htmlTask,
+      scssTask,
+      jsTask
+    ),
+    gulp.parallel(
+      serve,
+      watchTask
+    )
+  )
+);
 
 
 // ASCII flair
