@@ -16,10 +16,10 @@ const gulp         = require('gulp'),
       pngToJpeg    = require('png-to-jpeg'),
       imagemin     = require('gulp-imagemin'),
       pngquant     = require('imagemin-pngquant'),
-      responsive   = require('gulp-responsive'),
       connect      = require('gulp-connect-php'),
       browserSync  = require('browser-sync').create(),
-      favicons     = require('gulp-favicons');
+      favicons     = require('gulp-favicons'),
+      Vinyl        = require('vinyl');
 
 // Config
 const config = require('./config.json');
@@ -44,93 +44,55 @@ function clean() {
 
 
 // Image assets
-function imageAssetsTask() {
-  const baseWidth = 512;
+function imageAssetsTask(done) {
+  const imageSizes = [
+    512,
+    1024
+  ];
 
-  return gulp.src(
-    [
-      `${config.src}/assets/images/**/*.{jpg,png}`,
-      `!${config.src}/assets/images/**/_*.png`,
-      `!${config.src}/assets/images/duotone.jpg`
-    ], { base: config.src })
-  .pipe(cached('images-jpeg'))
-  .pipe(responsive({
-    '**/*.*': [
-      {
-        width: baseWidth,
-        rename: {
-          suffix: `-${baseWidth}px`,
-          extname: '.png'
-        }
-      }, {
-        width: baseWidth * 2,
-        rename: {
-          suffix: `-${baseWidth * 2}px`,
-          extname: '.png'
-        }
-      }
-    ]
-  },
-  {
-    withMetadata: false,
-    errorOnEnlargement: false,
-    errorOnUnusedConfig: false
-  }))
-  .pipe(imagemin([
-    pngToJpeg({ quality: 80 })
-  ], {
-    optimize: true,
-    grayscale: true,
-    progressive: true
-  }))
-  .pipe(rename(path => {
-    path.extname = '.jpg'
-  }))
-  .pipe(gulp.dest(config.dest))
+  const hqImageSizes = [
+    512,
+    1024,
+    1920
+  ];
 
-  &&
+  imageSizes.forEach(size => {
+    gulp.src(
+      [
+        `${config.src}/assets/images/**/*.{jpg,png}`,
+        `!${config.src}/assets/images/**/_*.png`,
+        `!${config.src}/assets/images/duotone.jpg`
+      ], { base: config.src })
+    .pipe(imagemin({
+      optimize: true,
+      grayscale: true,
+      progressive: true
+    }))
+    .pipe(rename({
+      suffix: `-${size}px`
+    }))
+    .pipe(gulp.dest(config.dest));
+  });
 
-  gulp.src(
-    [
-      `${config.src}/assets/images/**/_*.png`,
-    ], { base: config.src })
-  .pipe(cached('images-png'))
-  .pipe(responsive({
-    '**/*.*': [
-      {
-        width: baseWidth,
-        rename: {
-          suffix: `-${baseWidth}px`,
-          extname: '.png'
-        }
-      }, {
-        width: baseWidth * 2,
-        rename: {
-          suffix: `-${baseWidth * 2}px`,
-          extname: '.png'
-        }
-      }, {
-        width: baseWidth * 3.75,
-        rename: {
-          suffix: `-${baseWidth * 3.75}px`,
-          extname: '.png'
-        }
-      }
-    ]
-  },
-  {
-    withMetadata: false,
-    errorOnEnlargement: false,
-    errorOnUnusedConfig: false
-  }))
-  .pipe(imagemin([
-    pngquant({
-      speed: 1,
-      strip: true,
-      dithering: 1
-    })
-  ]))
-  .pipe(gulp.dest(config.dest));
+  hqImageSizes.forEach(size => {
+    gulp.src(
+      [
+        `${config.src}/assets/images/**/_*.png`
+      ], { base: config.src })
+    .pipe(imagemin([
+      pngquant({
+        speed: 1,
+        strip: true,
+        dithering: 1
+      })
+    ]))
+    .pipe(rename({
+      suffix: `-${size}px`
+    }))
+    .pipe(gulp.dest(config.dest));
+  });
+
+  done();
 }
 
 
@@ -180,7 +142,7 @@ function scssTask() {
   return gulp.src(`${config.src}/scss/style.scss`, { base: `${config.src}/scss`, allowEmpty: true })
   .pipe(scss({ outputStyle: 'compressed' }))
     .on('error', notify.onError('SCSS compile error: <%= error.message %>'))
-  .pipe(autoprefixer({ browsers: 'last 2 versions' }))
+  .pipe(autoprefixer({ overrideBrowserslist: 'last 2 versions' }))
   .pipe(map(inlineSvgCSS()))
     .on('error', notify.onError('Inline SVG error: <%= error.message %>'))
   .pipe(csso())
