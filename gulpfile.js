@@ -11,6 +11,7 @@ const gulp         = require('gulp'),
       autoprefixer = require('gulp-autoprefixer'),
       rename       = require("gulp-rename"),
       babel        = require('gulp-babel'),
+      sharp        = require('sharp'),
       uglify       = require('gulp-uglify-es').default,
       notify       = require('gulp-notify'),
       pngToJpeg    = require('png-to-jpeg'),
@@ -18,8 +19,7 @@ const gulp         = require('gulp'),
       pngquant     = require('imagemin-pngquant'),
       connect      = require('gulp-connect-php'),
       browserSync  = require('browser-sync').create(),
-      favicons     = require('gulp-favicons'),
-      Vinyl        = require('vinyl');
+      favicons     = require('gulp-favicons');
 
 // Config
 const config = require('./config.json');
@@ -45,40 +45,56 @@ function clean() {
 
 // Image assets
 function imageAssetsTask(done) {
-  const imageSizes = [
-    512,
-    1024
-  ];
+  const imageSizes = {
+    jpg: [
+      512,
+      1024
+    ],
+    png: [
+      512,
+      1024,
+      1920
+    ]
+  };
 
-  const hqImageSizes = [
-    512,
-    1024,
-    1920
-  ];
-
-  imageSizes.forEach(size => {
+  return imageSizes.jpg.forEach(size => {
     gulp.src(
       [
         `${config.src}/assets/images/**/*.{jpg,png}`,
         `!${config.src}/assets/images/**/_*.png`,
         `!${config.src}/assets/images/duotone.jpg`
       ], { base: config.src })
-    .pipe(imagemin({
-      optimize: true,
-      grayscale: true,
-      progressive: true
+    .pipe(map((file, cb) => {
+      return async (file, cb) => {
+        return cb(null, await sharp().resize({ width: size }));
+      }
+    }))
+    .pipe(imagemin([
+        pngToJpeg({ quality: 80 })
+      ], {
+        optimize: true,
+        grayscale: true,
+        progressive: true
     }))
     .pipe(rename({
-      suffix: `-${size}px`
+      suffix: `-${size}px`,
+      extname: '.jpg'
     }))
     .pipe(gulp.dest(config.dest));
-  });
+  })
 
-  hqImageSizes.forEach(size => {
+  &&
+
+  imageSizes.png.forEach(size => {
     gulp.src(
       [
         `${config.src}/assets/images/**/_*.png`
       ], { base: config.src })
+    .pipe(map((file, cb) => {
+      return async (file, cb) => {
+        return cb(null, await sharp().resize({ width: size }));
+      }
+    }))
     .pipe(imagemin([
       pngquant({
         speed: 1,
@@ -91,8 +107,6 @@ function imageAssetsTask(done) {
     }))
     .pipe(gulp.dest(config.dest));
   });
-
-  done();
 }
 
 
