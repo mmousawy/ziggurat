@@ -2,6 +2,16 @@
   "src": "example/murtada.nl-ziggurat/src",
   "dest": "example/murtada.nl-ziggurat/dist",
   "port": 5050,
+  "images": {
+    "jpg": [
+      "example/murtada.nl-ziggurat/src/assets/images/**/*.{jpg,png}",
+      "!example/murtada.nl-ziggurat/src/assets/images/**/_*.png",
+      "!example/murtada.nl-ziggurat/src/assets/images/duotone.jpg"
+    ],
+    "png": [
+      "example/murtada.nl-ziggurat/src/assets/images/**/_*.png"
+    ]
+  },
   "svgo": {
     "encode": true
   },

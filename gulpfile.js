@@ -15,7 +15,7 @@ const gulp         = require('gulp'),
       uglify       = require('gulp-uglify-es').default,
       notify       = require('gulp-notify'),
       pngToJpeg    = require('png-to-jpeg'),
-      imagemin     = require('gulp-imagemin'),
+      imagemin     = require('imagemin'),
       pngQuant     = require('imagemin-pngquant'),
       connect      = require('gulp-connect-php'),
       browserSync  = require('browser-sync').create(),
@@ -42,8 +42,65 @@ function clean() {
   return del(config.dest);
 }
 
+
+// Process single image type in size
+function processImage(type, size) {
+  return new Promise((resolve, reject) => {
+    // Go through each glob depending on the type
+    gulp.src(config.images[type],
+      { base: config.src })
+    .pipe(cache(`assets-${type}-${size}`, { optimizeMemory: true }))
+    .pipe(
+      map(async (file, cb) => {
+        await sharp(file.contents)
+        .resize({
+          width: size,
+          withoutEnlargement: true
+        })
+        .png()
+        .toBuffer()
+        .then(data => {
+          file.contents = data;
+          cb(null, file);
+        });
+      })
+    )
+    .pipe(map(async (file, cb) => {
+      const whichPlugin = {
+        jpg: pngToJpeg({
+          quality: 80
+        }),
+        png: pngQuant({
+          speed: 1,
+          strip: true,
+          dithering: 1,
+          quality: [.5, 1]
+        })
+      };
+
+      file.contents = await imagemin.buffer(file.contents,
+        {
+          optimize: true,
+          grayscale: true,
+          progressive: true
+        },
+        [ whichPlugin[type] ]
+      );
+
+      cb(null, file);
+    }))
+    .pipe(rename({
+      suffix: `-${size}px`,
+      extname: `.${type}`
+    }))
+    .pipe(gulp.dest(config.dest))
+    .on('end', resolve);
+  });
+}
+
+
 // Image assets
-async function imageAssetsTask(done) {
+function imageAssetsTask(done) {
   const imageSizes = {
     jpg: [
       512,
@@ -56,95 +113,19 @@ async function imageAssetsTask(done) {
     ]
   };
 
-  const sizesAmount = 5;
-  let processed = 0;
+  const processes = [];
 
-  const checkResolved = (resolve) => {
-    processed++;
+  Object.keys(imageSizes).forEach(type => {
+    const sizes = imageSizes[type];
 
-    if (processed === sizesAmount) {
-      return resolve();
-    }
-  };
-
-  return await new Promise((resolve, reject) => {
-    imageSizes.jpg.forEach(size => {
-      gulp.src([
-        `${config.src}/assets/images/**/*.{jpg,png}`,
-        `!${config.src}/assets/images/**/_*.png`,
-        `!${config.src}/assets/images/duotone.jpg`
-      ], { base: config.src })
-      .pipe(cache(`assets-jpg-${size}`, { optimizeMemory: true }))
-      .pipe(
-        map(async (file, cb) => {
-          await sharp(file.contents)
-          .resize({
-            width: size,
-            withoutEnlargement: true
-          })
-          .png()
-          .toBuffer()
-          .then(data => {
-            file.contents = data;
-            cb(null, file);
-          });
-        })
-      )
-      .pipe(imagemin([
-        pngToJpeg({
-          quality: 80
-        })
-      ], {
-        optimize: true,
-        grayscale: true,
-        progressive: true
-      }))
-      .pipe(rename({
-        suffix: `-${size}px`,
-        extname: '.jpg'
-      }))
-      .pipe(gulp.dest(config.dest))
-      .on('end', checkResolved.bind(null, resolve));
+    sizes.forEach(size => {
+      processes.push(processImage(type, size));
     });
+  });
 
-    imageSizes.png.forEach(size => {
-      gulp.src([
-        `${config.src}/assets/images/**/_*.png`
-      ], { base: config.src })
-      .pipe(cache(`assets-png-${size}`, { optimizeMemory: true }))
-      .pipe(
-        map(async (file, cb) => {
-          await sharp(file.contents)
-          .resize({
-            width: size,
-            withoutEnlargement: true
-          })
-          .toBuffer()
-          .then(data => {
-            file.contents = data;
-            cb(null, file);
-          });
-        })
-      )
-      .pipe(imagemin([
-        pngQuant({
-          speed: 1,
-          strip: true,
-          dithering: 1,
-          quality: [.5, 1]
-        })
-      ], {
-        optimize: true,
-        grayscale: true,
-        progressive: true
-      }))
-      .pipe(rename({
-        suffix: `-${size}px`,
-        extname: '.png'
-      }))
-      .pipe(gulp.dest(config.dest))
-      .on('end', checkResolved.bind(null, resolve));
-    });
+  Promise.all(processes)
+  .then(resolve => {
+    done();
   });
 }
 
