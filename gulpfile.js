@@ -201,22 +201,26 @@ function inlineSvgHTML(file, cb) {
       svgAttributes += (urlMatch[3] || '');
 
       // Attempt to read the SVG file
-      svgContents = fs.readFileSync(
-        path.join(config.src, svgPath)
-      ).toString('utf8');
+      if (fs.existsSync(path.join(config.src, svgPath))) {
+        svgContents = fs.readFileSync(
+          path.join(config.src, svgPath)
+        ).toString('utf8');
 
-      svgContents = svgContents.replace(/<svg\s(.+?)>/, `<svg $1 ${svgAttributes}>`);
+        svgContents = svgContents.replace(/<svg\s(.+?)>/, `<svg $1 ${svgAttributes}>`);
 
-      // Attempt to optimise the SVG file
-      // svgContents = await svgo.optimize(svgContents);
-      // svgContents = svgContents.data;
+        // Attempt to optimise the SVG file
+        // svgContents = await svgo.optimize(svgContents);
+        // svgContents = svgContents.data;
 
-      // Replace the matched string with the data URI
-      fileContents = fileContents.slice(0, urlMatch.index)
-        + svgContents.trim()
-        + fileContents.slice((urlMatch.index + urlMatch[0].length));
+        // Replace the matched string with the data URI
+        fileContents = fileContents.slice(0, urlMatch.index)
+          + svgContents.trim()
+          + fileContents.slice((urlMatch.index + urlMatch[0].length));
 
-      urlPattern.lastIndex = (urlMatch.index + 1);
+        urlPattern.lastIndex = (urlMatch.index + 1);
+      } else {
+        console.log(`Inline SVG in HTML: File: ${path.join(config.src, svgPath)} does not exist`);
+      }
     }
 
     file.contents = Buffer.from(fileContents);
@@ -243,48 +247,52 @@ function inlineSvgCSS(file, cb) {
       svgQuery = (urlMatch[2] || '');
       svgParameters = querystring.parse(svgQuery);
 
-      // Attempt to read the SVG file
-      svgContents = fs.readFileSync(
-        path.join(config.src, svgPath)
-      ).toString('utf8');
+      if (fs.existsSync(path.join(config.src, svgPath))) {
+        // Attempt to read the SVG file
+        svgContents = fs.readFileSync(
+          path.join(config.src, svgPath)
+        ).toString('utf8');
 
-      // Loop through all occurences of the variable pattern
-      while ((variableMatch = variablePattern.exec(svgContents)) !== null) {
-        if (variableMatch[1]) {
-          /* Attempt to replace the variable
-             with the corresponding paramater value
-             (or an empty string if the variable does _not_ exist) */
-          variableName = variableMatch[1];
-          variableReplacement = (svgParameters[variableName] || '');
+        // Loop through all occurences of the variable pattern
+        while ((variableMatch = variablePattern.exec(svgContents)) !== null) {
+          if (variableMatch[1]) {
+            /* Attempt to replace the variable
+              with the corresponding paramater value
+              (or an empty string if the variable does _not_ exist) */
+            variableName = variableMatch[1];
+            variableReplacement = (svgParameters[variableName] || '');
 
-        } else {
-          // Replace the escape-character sequence with the character itself
-          variableReplacement = variableMatch[0][1];
+          } else {
+            // Replace the escape-character sequence with the character itself
+            variableReplacement = variableMatch[0][1];
+          }
+
+          svgContents = svgContents.slice(0, variableMatch.index)
+            + variableReplacement
+            + svgContents.slice((variableMatch.index + variableMatch[0].length));
+
+          variablePattern.lastIndex = (variableMatch.index + 1);
         }
 
-        svgContents = svgContents.slice(0, variableMatch.index)
-          + variableReplacement
-          + svgContents.slice((variableMatch.index + variableMatch[0].length));
+        // Attempt to optimise the SVG file
+        svgContents = await svgo.optimize(svgContents);
 
-        variablePattern.lastIndex = (variableMatch.index + 1);
+        // Format the interpolated and optimised SVG file as a data URI
+        svgContents = (
+          config.svgo.encode
+            ? `url('data:image/svg+xml,${encodeURIComponent(svgContents.data)}')`
+            : `url('data:image/svg+xml,charset=UTF-8,${svgContents.data}')`
+        );
+
+        // Replace the matched string with the data URI
+        fileContents = fileContents.slice(0, urlMatch.index)
+          + svgContents
+          + fileContents.slice((urlMatch.index + urlMatch[0].length));
+
+        urlPattern.lastIndex = (urlMatch.index + 1);
+      } else {
+        console.log(`Inline SVG in CSS: File: ${path.join(config.src, svgPath)} does not exist`);
       }
-
-      // Attempt to optimise the SVG file
-      svgContents = await svgo.optimize(svgContents);
-
-      // Format the interpolated and optimised SVG file as a data URI
-      svgContents = (
-        config.svgo.encode
-          ? `url('data:image/svg+xml,${encodeURIComponent(svgContents.data)}')`
-          : `url('data:image/svg+xml,charset=UTF-8,${svgContents.data}')`
-      );
-
-      // Replace the matched string with the data URI
-      fileContents = fileContents.slice(0, urlMatch.index)
-        + svgContents
-        + fileContents.slice((urlMatch.index + urlMatch[0].length));
-
-      urlPattern.lastIndex = (urlMatch.index + 1);
     }
 
     file.contents = Buffer.from(fileContents);
@@ -432,10 +440,6 @@ gulp.task('skipAssets',
       htmlTask,
       scssTask,
       jsTask
-    ),
-    gulp.parallel(
-      serve,
-      watchTask
     )
   )
 );

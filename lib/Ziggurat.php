@@ -74,7 +74,13 @@ class Ziggurat
       preg_match_all($pattern, $fileContents, $matches, PREG_SET_ORDER);
 
       foreach ($matches as $match) {
-        if ($match[1] === 'cover-image') {
+        if ($match[1] === 'ignore') {
+          $page['properties'][$match[1]] = $match[2];
+          array_push($this->pages, $page);
+
+          continue 2;
+
+        } else if ($match[1] === 'cover-image') {
           $page['properties'][$match[1]] = [];
 
           if (strpos($match[2], '{$size}')) {
@@ -115,7 +121,9 @@ class Ziggurat
       $page['slug-path'] = $this->resolveSlugPath($page);
       $page['ancestors'] = explode('/', $page['slug-path']);
 
-      if ($this->options['enable_cache'] === true) {
+      if ($this->options['enable_cache'] === true
+          && isset($this->options['ignore'])
+          && $this->options['ignore'] !== 'true') {
         $page['html'] = $this->render($page, true);
       }
     }
@@ -342,7 +350,7 @@ class Ziggurat
     $foundPages = [];
     $foundAmount = 0;
 
-    foreach($this->pages as $page) {
+    foreach ($this->pages as $page) {
       if ($foundAmount) {
         continue;
       }
