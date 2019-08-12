@@ -68,7 +68,7 @@ function processImage(type, size) {
     .pipe(map(async (file, cb) => {
       const whichPlugin = {
         jpg: pngToJpeg({
-          quality: 80
+          quality: 75
         }),
         png: pngQuant({
           speed: 1,
@@ -82,9 +82,11 @@ function processImage(type, size) {
         {
           optimize: true,
           grayscale: true,
-          progressive: true
-        },
-        [ whichPlugin[type] ]
+          progressive: true,
+          plugins: [
+            whichPlugin[type]
+          ]
+        }
       );
 
       cb(null, file);
