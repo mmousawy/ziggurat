@@ -376,6 +376,14 @@ class Ziggurat
   // Private
   private function searchPage(string $path = '')
   {
+    $pathParts = explode('?', $path);
+
+    $path = $pathParts[0];
+
+    if (isset($pathParts[1])) {
+    	parse_str($pathParts[1], $_GET);
+    }
+
     if (empty($path)) {
       $path = 'index';
     }
