@@ -293,7 +293,7 @@ class Ziggurat
   public function minifyHTML(string $buffer): string
   {
     $search = [
-      '/\s{2,}|\n/m', // Remove multiple whitespaces and newlines
+      '/(?s)<pre[^<]*>.*?<\/pre>(*SKIP)(*F)|\s{2,}|\n/m', // Remove multiple whitespaces and newlines
       '/<!--(.|\s)*?-->/' // Remove HTML comments
     ];
 
