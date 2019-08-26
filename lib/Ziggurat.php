@@ -70,21 +70,18 @@ class Ziggurat
       // Read out file metadata
       // Match any string that has the following pattern:
       // #zigg:property = `value`
-      $pattern = '/#\s*zigg\s*:\s*([a-zA-Z0-9-_]+)\s*=\s*`([^`]+)/m';
+      $pattern = '/#\s*zigg\s*:\s*([a-zA-Z0-9-_]+)(\s*=\s*`([^`]+))?/m';
       preg_match_all($pattern, $fileContents, $matches, PREG_SET_ORDER);
 
       foreach ($matches as $match) {
-        if ($match[1] === 'ignore') {
-          $page['properties'][$match[1]] = $match[2];
-          array_push($this->pages, $page);
+        if ($match[1] === 'ignore' && !isset($match[3])) {
+          $page['properties'][$match[1]] = 'true';
 
-          continue 2;
-
-        } else if ($match[1] === 'cover-image') {
+        } else if ($match[1] === 'cover-image' && isset($match[3])) {
           $page['properties'][$match[1]] = [];
 
-          if (strpos($match[2], '{$size}')) {
-            $coverImage = explode('{$size}', $match[2]);
+          if (strpos($match[3], '{$size}')) {
+            $coverImage = explode('{$size}', $match[3]);
           }
 
           foreach($this->imageSizes as $label => $pixels) {
@@ -97,8 +94,8 @@ class Ziggurat
               $page['properties'][$match[1]][$label] = $imageUrl;
             }
           }
-        } else {
-          $page['properties'][$match[1]] = $match[2];
+        } else if (isset($match[3])) {
+          $page['properties'][$match[1]] = $match[3];
         }
       }
 
@@ -120,11 +117,17 @@ class Ziggurat
     foreach ($this->pages as &$page) {
       $page['slug-path'] = $this->resolveSlugPath($page);
       $page['ancestors'] = explode('/', $page['slug-path']);
+    }
 
-      if ($this->options['enable_cache'] === true
-          && isset($this->options['ignore'])
-          && $this->options['ignore'] !== 'true') {
-        $page['html'] = $this->render($page, true);
+
+    if ($this->options['enable_cache'] === true) {
+      foreach ($this->pages as &$page) {
+        if (isset($page['properties'])
+            && !isset($page['properties']['ignore'])
+            || (isset($page['properties']['ignore'])
+                && $page['properties']['ignore'] !== 'true')) {
+          $page['html'] = $this->render($page, true);
+        }
       }
     }
 
@@ -404,7 +407,7 @@ class Ziggurat
 
   private function resolveSlugPath(array $page): string
   {
-    if (!$page['properties']) {
+    if (!isset($page['properties']) || !isset($page['properties']['slug'])) {
       return false;
     }
 
