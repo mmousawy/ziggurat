@@ -12,6 +12,8 @@ class Ziggurat
   private $minify;
   private $Parsedown;
   private $options;
+  private $db;
+  private $databaseEnabled;
   private $xmlSiteMapSchema = 'http://www.sitemaps.org/schemas/sitemap/0.9';
 
   public $imageSizes = [
@@ -21,6 +23,7 @@ class Ziggurat
   ];
 
   public $resolvedPage;
+
 
   function __construct(array $options = [])
   {
@@ -40,8 +43,27 @@ class Ziggurat
     $this->loadTemplate($options['template']);
 
     if ($this->options['enable_cache'] === true) {
+      $this->databaseEnabled = $this->initDatabase();
       $this->loadCache();
     }
+  }
+
+
+  private function initDatabase(): bool
+  {
+    $this->db = new \SQLite3('../ziggurat-cache.db');
+
+    $schema = <<<SQL
+      CREATE TABLE IF NOT EXISTS pages (
+        path text NOT NULL,
+        properties text NOT NULL,
+        slug_path PRIMARY KEY NOT NULL,
+        ancestors text NOT NULL,
+        html text NOT NULL
+      );
+    SQL;
+
+    return $this->db->exec($schema);
   }
 
 
@@ -67,9 +89,11 @@ class Ziggurat
 
       $fileContents = file_get_contents($page['path']);
 
-      // Read out file metadata
-      // Match any string that has the following pattern:
-      // #zigg:property = `value`
+      /**
+       * Read out file metadata
+       * Match any string that has the following pattern:
+       * #zigg:property = `value`
+       */
       $pattern = '/#\s*zigg\s*:\s*([a-zA-Z0-9-_]+)(\s*=\s*`([^`]+))?/m';
       preg_match_all($pattern, $fileContents, $matches, PREG_SET_ORDER);
 
@@ -84,7 +108,7 @@ class Ziggurat
             $coverImage = explode('{$size}', $match[3]);
           }
 
-          foreach($this->imageSizes as $label => $pixels) {
+          foreach ($this->imageSizes as $label => $pixels) {
             $imageUrl = [
               'url' => "assets/images/{$coverImage[0]}-{$pixels}px{$coverImage[1]}",
               'size' => $pixels
@@ -102,6 +126,9 @@ class Ziggurat
       array_push($this->pages, $page);
     }
 
+    /**
+     * Sort pages
+     */
     usort($this->pages, function($item1, $item2) {
       // By path depth
       if (!isset($item2['properties']['date']) || !isset($item1['properties']['date'])) {
@@ -112,11 +139,13 @@ class Ziggurat
     });
 
     foreach ($this->pages as &$page) {
-      $page['slug-path'] = $this->resolveSlugPath($page);
-      $page['ancestors'] = explode('/', $page['slug-path']);
+      $page['slug_path'] = $this->resolveSlugPath($page);
+      $page['ancestors'] = explode('/', $page['slug_path']);
     }
 
-
+    /**
+     * Pre-render the HTML if caching is turned on
+     */
     if ($this->options['enable_cache'] === true) {
       foreach ($this->pages as &$page) {
         if (isset($page['properties'])
@@ -128,6 +157,9 @@ class Ziggurat
       }
     }
 
+    /**
+     * Save cache at the end of indexing
+     */
     if ($this->options['enable_cache'] === true) {
       $this->saveCache();
     }
@@ -140,10 +172,40 @@ class Ziggurat
 
   public function saveCache(): bool
   {
-    $cacheString = json_encode($this->pages);
+    if (!$this->databaseEnabled) {
+      $cacheString = json_encode($this->pages);
 
-    if (file_put_contents('ziggurat-cache.json.php', $cacheString) === false) {
-      return false;
+      if (file_put_contents('ziggurat-cache.json.php', $cacheString) === false) {
+        return false;
+      }
+    } else {
+      foreach($this->pages as $page) {
+        $query = <<<SQL
+          INSERT INTO
+            pages
+              (path, properties, slug_path, ancestors, html)
+          VALUES
+            (:path, :properties, :slug_path, :ancestors, :html)
+          ON
+            CONFLICT(slug_path)
+          DO
+            UPDATE SET
+              path = :path,
+              properties = :properties,
+              slug_path = :slug_path,
+              ancestors = :ancestors,
+              html = :html;
+        SQL;
+
+        $st = $this->db->prepare($query);
+        $st->bindValue(':path', $page['path']);
+        $st->bindValue(':properties', json_encode($page['properties']));
+        $st->bindValue(':slug_path', $page['slug_path']);
+        $st->bindValue(':ancestors', json_encode($page['ancestors']));
+        $st->bindValue(':html', isset($page['html']) ? $page['html'] : '');
+
+        $results = $st->execute();
+      }
     }
 
     return true;
@@ -152,12 +214,14 @@ class Ziggurat
 
   public function loadCache(): bool
   {
-    // TODO: Check if cache is valid
-    if (!file_exists('ziggurat-cache.json.php')) {
-      return false;
-    }
+    if (!$this->databaseEnabled) {
+      // TODO: Check if cache is valid
+      if (!file_exists('ziggurat-cache.json.php')) {
+        return false;
+      }
 
-    $this->pages = json_decode(file_get_contents('ziggurat-cache.json.php'), true);
+      $this->pages = json_decode(file_get_contents('ziggurat-cache.json.php'), true);
+    }
 
     return true;
   }
@@ -171,10 +235,10 @@ class Ziggurat
 
     $siteMapData = [];
 
-    foreach($this->pages as $page) {
+    foreach ($this->pages as $page) {
       $siteMapEntry = [
         'url' => [
-          'loc' => $hostURL . ($page['slug-path'] === 'index' ? '' : ('/' . $page['slug-path'])),
+          'loc' => $hostURL . ($page['slug_path'] === 'index' ? '' : ('/' . $page['slug_path'])),
           'priority' => (isset($page['properties']['priority']) ? $page['properties']['priority'] : '0.1'),
           'lastmod' => isset($page['properties']['date']) ? $page['properties']['date'] : date('Y-m-d', filemtime($page['path'])),
           'changefreq' => 'weekly'
@@ -210,6 +274,28 @@ class Ziggurat
       $page = &$this->resolvedPage;
     } else {
       $this->resolvedPage = $page;
+    }
+
+    if (empty($page['html']) && $this->databaseEnabled && !$index) {
+      $query = <<<SQL
+        SELECT
+          html
+        FROM
+          pages
+        WHERE
+          slug_path = :slug_path;
+      SQL;
+
+      $st = $this->db->prepare($query);
+      $st->bindValue(':slug_path', $page['slug_path']);
+
+      $results = $st->execute();
+
+      $row = $results->fetchArray();
+
+      $page['html'] = $row['html'];
+
+      return $page['html'];
     }
 
     if (!empty($page['html']) && !$index) {
@@ -326,7 +412,7 @@ class Ziggurat
     $resolvedPage = [
       'page-type' => 'page',
       'path'      => $foundPage['path'],
-      'slug-path' => $foundPage['slug-path'],
+      'slug_path' => $foundPage['slug_path'],
       'ancestors' => $foundPage['ancestors']
     ];
 
@@ -388,13 +474,43 @@ class Ziggurat
       $path = 'index';
     }
 
-    foreach ($this->pages as $page) {
-      if (!empty($page['slug-path'])) {
-        if ($page['slug-path'] === $path) {
+    if ($this->databaseEnabled) {
+      $searchQuery = <<<SQL
+        SELECT
+          path,
+          properties,
+          slug_path,
+          ancestors
+        FROM
+          pages
+        WHERE
+          slug_path = :slug_path;
+      SQL;
+
+      $st = $this->db->prepare($searchQuery);
+      $st->bindValue(':slug_path', $path);
+
+      $results = $st->execute();
+
+      $row = $results->fetchArray();
+
+      $page = [
+        'path' => $row['path'],
+        'properties' => json_decode($row['properties'], true),
+        'slug_path' => $row['slug_path'],
+        'ancestors' => json_decode($row['ancestors'])
+      ];
+
+      return $page;
+    } else {
+      foreach ($this->pages as $page) {
+        if (!empty($page['slug_path'])) {
+          if ($page['slug_path'] === $path) {
+            return $page;
+          }
+        } else if (pathinfo($page['path'], PATHINFO_FILENAME) === $path) {
           return $page;
         }
-      } else if (pathinfo($page['path'], PATHINFO_FILENAME) === $path) {
-        return $page;
       }
     }
 
