@@ -164,6 +164,9 @@ class Ziggurat
       $this->saveCache();
     }
 
+    // Reset resolvedPage after rendering
+    $this->resolvedPage = null;
+
     $this->generateSiteMap();
 
     return true;
@@ -179,7 +182,7 @@ class Ziggurat
         return false;
       }
     } else {
-      foreach($this->pages as $page) {
+      foreach ($this->pages as $page) {
         $query = <<<SQL
           INSERT INTO
             pages
@@ -270,11 +273,7 @@ class Ziggurat
     // Make reference to Ziggurat available for resolved pages
     $Ziggurat = $this;
 
-    if (empty($page)) {
-      $page = &$this->resolvedPage;
-    } else {
-      $this->resolvedPage = $page;
-    }
+    $this->resolvedPage = &$page;
 
     if (isset($page) && empty($page['html']) && $this->databaseEnabled && !$index) {
       $query = <<<SQL
@@ -303,24 +302,23 @@ class Ziggurat
       return $page['html'];
     }
 
-    if (!isset($page['path'])) {
+    if (empty($page['path'])) {
       header('HTTP/1.0 404 Not Found');
       $page = $this->searchPage('404');
     }
 
-    if (!isset($page['path'])) {
-      header('HTTP/1.0 404 Not Found');
+    if (empty($page['path'])) {
       echo '404 - Page not found.';
       exit;
     }
 
     ob_start();
     require $page['path'];
-    $this->resolvedPage['content'] = ob_get_clean();
+    $page['content'] = ob_get_clean();
 
     // Render markdown file with Parsedown
     if ((isset($page['type']) && $page['type'] == 'markdown') || (isset($page['properties']['type']) && $page['properties']['type'] == 'markdown')) {
-      $this->resolvedPage['content'] = $this->Parsedown->text($this->resolvedPage['content']);
+      $page['content'] = $this->Parsedown->text($page['content']);
     }
 
     ob_start();
@@ -334,6 +332,7 @@ class Ziggurat
         require $templatePart;
       }
     }
+
     $renderedPage = ob_get_clean();
 
     // Get image aspect ratios
