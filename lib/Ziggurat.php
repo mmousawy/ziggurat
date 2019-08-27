@@ -132,7 +132,7 @@ class Ziggurat
     usort($this->pages, function($item1, $item2) {
       // By path depth
       if (!isset($item2['properties']['date']) || !isset($item1['properties']['date'])) {
-        return substr_count($item2['path'], '/') < substr_count($item1['path'], '/');
+        return strcmp($item1['path'], $item2['path']);
       }
 
       return $item2['properties']['date'] <=> $item1['properties']['date'];
@@ -276,7 +276,7 @@ class Ziggurat
       $this->resolvedPage = $page;
     }
 
-    if (empty($page['html']) && $this->databaseEnabled && !$index) {
+    if (isset($page) && empty($page['html']) && $this->databaseEnabled && !$index) {
       $query = <<<SQL
         SELECT
           html
@@ -293,18 +293,25 @@ class Ziggurat
 
       $row = $results->fetchArray();
 
-      $page['html'] = $row['html'];
-
-      return $page['html'];
+      if ($row) {
+        $page['html'] = $row['html'];
+        return $page['html'];
+      }
     }
 
     if (!empty($page['html']) && !$index) {
       return $page['html'];
     }
 
-    if (!isset($page)) {
+    if (!isset($page['path'])) {
       header('HTTP/1.0 404 Not Found');
       $page = $this->searchPage('404');
+    }
+
+    if (!isset($page['path'])) {
+      header('HTTP/1.0 404 Not Found');
+      echo '404 - Page not found.';
+      exit;
     }
 
     ob_start();
@@ -494,23 +501,25 @@ class Ziggurat
 
       $row = $results->fetchArray();
 
-      $page = [
-        'path' => $row['path'],
-        'properties' => json_decode($row['properties'], true),
-        'slug_path' => $row['slug_path'],
-        'ancestors' => json_decode($row['ancestors'])
-      ];
+      if ($row) {
+        $page = [
+          'path' => $row['path'],
+          'properties' => json_decode($row['properties'], true),
+          'slug_path' => $row['slug_path'],
+          'ancestors' => json_decode($row['ancestors'])
+        ];
 
-      return $page;
-    } else {
-      foreach ($this->pages as $page) {
-        if (!empty($page['slug_path'])) {
-          if ($page['slug_path'] === $path) {
-            return $page;
-          }
-        } else if (pathinfo($page['path'], PATHINFO_FILENAME) === $path) {
+        return $page;
+      }
+    }
+
+    foreach ($this->pages as $page) {
+      if (!empty($page['slug_path'])) {
+        if ($page['slug_path'] === $path) {
           return $page;
         }
+      } else if (pathinfo($page['path'], PATHINFO_FILENAME) === $path) {
+        return $page;
       }
     }
 
