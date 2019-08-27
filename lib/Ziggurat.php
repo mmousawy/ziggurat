@@ -103,12 +103,9 @@ class Ziggurat
     }
 
     usort($this->pages, function($item1, $item2) {
-      if (empty($item1['properties']['date'])) {
-        return false;
-      }
-
-      if (empty($item2['properties']['date'])) {
-        return true;
+      // By path depth
+      if (!isset($item2['properties']['date']) || !isset($item1['properties']['date'])) {
+        return substr_count($item2['path'], '/') < substr_count($item1['path'], '/');
       }
 
       return $item2['properties']['date'] <=> $item1['properties']['date'];
