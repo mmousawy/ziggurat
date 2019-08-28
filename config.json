@@ -1,28 +1,67 @@
 {
-  "src": "example/murtada.nl-ziggurat/src",
-  "dest": "example/murtada.nl-ziggurat/dist",
-  "port": 5050,
-  "images": {
-    "jpg": [
-      "example/murtada.nl-ziggurat/src/assets/images/**/*.{jpg,png}",
-      "!example/murtada.nl-ziggurat/src/assets/images/**/_*.png",
-      "!example/murtada.nl-ziggurat/src/assets/images/duotone.jpg"
+  "buildOptions": {
+    "project": {
+      "source": "example/murtada.nl-ziggurat/src",
+      "destination": "example/murtada.nl-ziggurat/dist"
+    },
+    "server": {
+      "port": 5050
+    },
+    "pages": [
+      "example/murtada.nl-ziggurat/src/**/*.php"
     ],
-    "png": [
-      "example/murtada.nl-ziggurat/src/assets/images/**/_*.png"
+    "scss": {
+      "source": "example/murtada.nl-ziggurat/src/scss/**.*.scss",
+      "destination": "example/murtada.nl-ziggurat/dist/style.css",
+      "browserList": "last 1 version, chrome > 70, not dead"
+    },
+    "javascript": {
+      "source": "example/murtada.nl-ziggurat/src/script/script.js",
+      "destination": "example/murtada.nl-ziggurat/dist/script.min.js",
+      "libs": "example/murtada.nl-ziggurat/src/script/lib/*.js"
+    },
+    "images": {
+      "jpg": [
+        "example/murtada.nl-ziggurat/src/assets/images/**/*.{jpg,png}",
+        "!example/murtada.nl-ziggurat/src/assets/images/**/_*.png",
+        "!example/murtada.nl-ziggurat/src/assets/images/duotone.jpg"
+      ],
+      "png": [
+        "example/murtada.nl-ziggurat/src/assets/images/**/_*.png"
+      ],
+      "sizes": {
+        "jpg": [
+          512,
+          1024
+        ],
+        "png": [
+          512,
+          1024,
+          1920
+        ]
+      }
+    },
+    "svgo": {
+      "encode": true
+    },
+    "favicons": {
+      "source": "example/murtada.nl-ziggurat/src/favicon.png",
+      "destination": "example/murtada.nl-ziggurat/dist/favicons",
+      "options": {
+        "path": "/favicons/",
+        "appName": "Murtada.nl website",
+        "appShortName": "Murtada.nl",
+        "appDescription": "Personal portfolio and blog of Murtada al Mousawy"
+      }
+    },
+    "otherAssets": [
+      "example/murtada.nl-ziggurat/src/robots.txt",
+      "example/murtada.nl-ziggurat/src/humans.txt",
+      "example/murtada.nl-ziggurat/src/assets/**/*",
+      "!example/murtada.nl-ziggurat/src/assets/**/*.{fla,jpg,png,psd,ai}",
+      "!example/murtada.nl-ziggurat/src/assets/**/_*.svg",
+      "example/murtada.nl-ziggurat/src/assets/**/duotone.jpg",
+      "example/murtada.nl-ziggurat/src/assets/**/duotone.webp"
     ]
-  },
-  "svgo": {
-    "encode": true
-  },
-  "favicons": {
-    "src": "favicon.png",
-    "dest": "favicons",
-    "options": {
-      "path": "/favicons/",
-      "appName": "Murtada.nl website",
-      "appShortName": "Murtada.nl",
-      "appDescription": "Personal portfolio and blog of Murtada al Mousawy"
-    }
   }
 }

@@ -1,54 +1,108 @@
-// Default gulpfile for Murtada.nl
-const gulp         = require('gulp'),
-      fs           = require('fs'),
-      del          = require('del'),
-      path         = require('path'),
-      map          = require('map-stream'),
-      querystring  = require('querystring'),
-      cache        = require('gulp-cached'),
-      scss         = require('gulp-sass'),
-      csso         = require('gulp-csso'),
-      autoprefixer = require('gulp-autoprefixer'),
-      rename       = require("gulp-rename"),
-      babel        = require('gulp-babel'),
-      sharp        = require('sharp'),
-      uglify       = require('gulp-uglify-es').default,
-      notify       = require('gulp-notify'),
-      pngToJpeg    = require('png-to-jpeg'),
-      imagemin     = require('imagemin'),
-      pngQuant     = require('imagemin-pngquant'),
-      connect      = require('gulp-connect-php'),
-      browserSync  = require('browser-sync').create(),
-      favicons     = require('gulp-favicons');
+/**
+ * Default gulpfile for Ziggurat.
+ * This file contains all the individual tasks for the following gulp tasks:
+ *
+ *  gulp [default]
+ *    Clean, build and watch for changes for all files.
+ *
+ *  gulp deploy
+ *    Clean, build for deployment (no sourcemaps) and watch for changes for all files.
+ *
+ *  gulp skipFavicons
+ *    Clean, build but skip favicons generation and watch for changes for all files.
+ *
+ *  gulp skipImageAssets
+ *    Don't clean, build but skip generating images, watch for all files.
+ */
 
-// Config
+// Base packages
+const gulp         = require('gulp');
+const fs           = require('fs');
+const del          = require('del');
+const path         = require('path');
+
+// Gulp helper packages
+const notify       = require('gulp-notify');
+const cache        = require('gulp-cached');
+const rename       = require("gulp-rename");
+const gulpif       = require("gulp-if");
+const map          = require('map-stream');
+
+// SVG packages
+const querystring  = require('querystring');
+const csso         = require('gulp-csso');
+
+// SCSS packages
+const scss         = require('gulp-sass');
+const autoprefixer = require('gulp-autoprefixer');
+const sourcemaps   = require('gulp-sourcemaps');
+
+// JavaScript packages
+const rollup       = require('rollup').rollup;
+const terser       = require('rollup-plugin-terser').terser;
+
+// Image packages
+const sharp        = require('sharp');
+const pngToJpeg    = require('png-to-jpeg');
+const imagemin     = require('imagemin');
+const pngQuant     = require('imagemin-pngquant');
+const favicons     = require('gulp-favicons');
+
+// Development server packages
+const connect      = require('gulp-connect-php');
+const browserSync  = require('browser-sync').create();
+
+/**
+ * Load the gulp config.
+ */
 const config = require('./config.json');
-
-// BrowserSync reload
-const reload = (done) => {
-  browserSync.reload();
-  done();
-}
 
 // Initialise SVGO
 const SVGO = require('svgo');
 const svgo = new SVGO(config.svgo || {});
+let ENVIRONMENT = 'development';
 
+// Individual Gulp tasks are below.
 
-// Tasks below
+/**
+ * Set the environment variable.
+ *
+ * @param {string} env
+ */
+function setDeployEnvironment(done) {
+  ENVIRONMENT = 'deploy';
 
-// Clean
-function clean() {
-  return del(config.dest);
+  done();
 }
 
+/**
+ * Create a gulpified BrowserSync reload.
+ *
+ * @param {function} done
+ */
+function reload(done) {
+  browserSync.reload();
+  done();
+}
 
-// Process single image type in size
+/**
+ * Clean the destination folder.
+ */
+function clean() {
+  return del(config.buildOptions.project.destination);
+}
+
+/**
+ * Process single image type in a single size.
+ *
+ * @param {string} type The type of image (jpg/png)
+ * @param {int} size What size it should be
+ */
 function processImage(type, size) {
   return new Promise((resolve, reject) => {
     // Go through each glob depending on the type
-    gulp.src(config.images[type],
-      { base: config.src })
+    gulp.src(config.buildOptions.images[type],
+      { base: config.buildOptions.project.source })
     .pipe(cache(`assets-${type}-${size}`, { optimizeMemory: true }))
     .pipe(
       map(async (file, cb) => {
@@ -95,25 +149,18 @@ function processImage(type, size) {
       suffix: `-${size}px`,
       extname: `.${type}`
     }))
-    .pipe(gulp.dest(config.dest))
+    .pipe(gulp.dest(config.buildOptions.project.destination))
     .on('end', resolve);
   });
 }
 
-
-// Image assets
+/**
+ * Process all images asynchronously.
+ *
+ * @param {function} done
+ */
 function imageAssetsTask(done) {
-  const imageSizes = {
-    jpg: [
-      512,
-      1024
-    ],
-    png: [
-      512,
-      1024,
-      1920
-    ]
-  };
+  const imageSizes = config.buildOptions.images.sizes;
 
   const processes = [];
 
@@ -131,65 +178,67 @@ function imageAssetsTask(done) {
   });
 }
 
-
-// Other assets
+/**
+ * Move all other assets.
+ */
 function otherAssetsTask() {
-  return gulp.src([
-    `${config.src}/robots.txt`,
-    `${config.src}/humans.txt`,
-    `${config.src}/assets/**/*`,
-    `!${config.src}/assets/**/*.{fla,jpg,png,psd,ai}`,
-    `!${config.src}/assets/**/_*.svg`,
-    `${config.src}/assets/**/duotone.jpg`,
-    `${config.src}/assets/**/duotone.webp`
-  ], { base: config.src })
+  return gulp.src(config.buildOptions.otherAssets, { base: config.buildOptions.project.source })
   .pipe(cache('assets-other', { optimizeMemory: true }))
-  .pipe(gulp.dest(config.dest))
-  &&
-  gulp.src(`${config.dest}/favicons/favicon.ico`, { allowEmpty: true })
-  .pipe(gulp.dest(config.dest));
+  .pipe(gulp.dest(config.buildOptions.project.destination));
 }
 
-
-// Favicon
+/**
+ * Generate favicons and move them to destination.
+ */
 function faviconTask() {
   return gulp.src(
-    path.join(config.src, config.favicons.src),
-    { base: config.favicons.src })
-  .pipe(favicons(config.favicons.options))
+    config.buildOptions.favicons.source,
+    { base: config.buildOptions.project.source })
+  .pipe(favicons(config.buildOptions.favicons.options))
     .on('error', notify.onError('Favicon generator error: <%= error.message %>'))
-  .pipe(gulp.dest(path.join(config.dest, config.favicons.dest)));
+  .pipe(gulp.dest(config.buildOptions.favicons.destination))
+
+  &&
+
+  // Move favicon to destination root
+  gulp.src(`${config.buildOptions.project.destination}/favicons/favicon.ico`, { allowEmpty: true })
+  .pipe(gulp.dest(config.buildOptions.project.destination));
 }
 
-
-// HTML
+/**
+ * Move HTML and PHP files to destination while inlining SVG files.
+ */
 function htmlTask() {
-  return gulp.src([
-    `${config.src}/**/*.php`,
-    `${config.src}/**/*.md`
-  ], { base: config.src })
+  return gulp.src(config.buildOptions.pages, { base: config.buildOptions.project.source })
   .pipe(map(inlineSvgHTML()))
-  .pipe(gulp.dest(config.dest));
+  .pipe(gulp.dest(config.buildOptions.project.destination));
 }
 
-
-// SCSS
+/**
+ * Compile CSS to SCSS and compress
+ */
 function scssTask() {
   return gulp.src(
-    `${config.src}/scss/style.scss`,
-    { base: `${config.src}/scss`, allowEmpty: true })
+    `${config.buildOptions.project.source}/scss/style.scss`,
+    { base: `${config.buildOptions.project.source}/scss`, allowEmpty: true })
+  .pipe(gulpif(ENVIRONMENT === 'development', sourcemaps.init()))
   .pipe(scss({ outputStyle: 'compressed' }))
     .on('error', notify.onError('SCSS compile error: <%= error.message %>'))
-  .pipe(autoprefixer({ overrideBrowserslist: 'last 2 versions' }))
+  .pipe(autoprefixer({ overrideBrowserslist: config.buildOptions.scss.browserList }))
   .pipe(map(inlineSvgCSS()))
     .on('error', notify.onError('Inline SVG error: <%= error.message %>'))
   .pipe(csso())
-  .pipe(gulp.dest(config.dest))
+  .pipe(gulpif(ENVIRONMENT === 'development', sourcemaps.write()))
+  .pipe(gulp.dest(config.buildOptions.project.destination))
   .pipe(browserSync.stream());
 }
 
-
-// Inline SVG into HTML
+/**
+ * Inline external SVG into HTML.
+ *
+ * @param {*} file
+ * @param {function} cb
+ */
 function inlineSvgHTML(file, cb) {
   return async (file, cb) => {
     const urlPattern = /<img\s?(.+)?\ssrc="([^"]+\/_.+svg)"([^>]+)?>/gmi;
@@ -203,9 +252,9 @@ function inlineSvgHTML(file, cb) {
       svgAttributes += (urlMatch[3] || '');
 
       // Attempt to read the SVG file
-      if (fs.existsSync(path.join(config.src, svgPath))) {
+      if (fs.existsSync(path.join(config.buildOptions.project.source, svgPath))) {
         svgContents = fs.readFileSync(
-          path.join(config.src, svgPath)
+          path.join(config.buildOptions.project.source, svgPath)
         ).toString('utf8');
 
         svgContents = svgContents.replace(/<svg\s(.+?)>/, `<svg $1 ${svgAttributes}>`);
@@ -221,7 +270,7 @@ function inlineSvgHTML(file, cb) {
 
         urlPattern.lastIndex = (urlMatch.index + 1);
       } else {
-        console.log(`Inline SVG in HTML: File: ${path.join(config.src, svgPath)} does not exist`);
+        console.log(`Inline SVG in HTML: File: ${path.join(config.buildOptions.project.source, svgPath)} does not exist`);
       }
     }
 
@@ -230,8 +279,12 @@ function inlineSvgHTML(file, cb) {
   }
 }
 
-
-// Inline SVG into CSS
+/**
+ * Inline SVG into CSS files.
+ *
+ * @param {*} file
+ * @param {function} cb
+ */
 function inlineSvgCSS(file, cb) {
   return async (file, cb) => {
     // Example: url('inline:file.svg?color=#fff&backgroundColor=#000');
@@ -249,10 +302,10 @@ function inlineSvgCSS(file, cb) {
       svgQuery = (urlMatch[2] || '');
       svgParameters = querystring.parse(svgQuery);
 
-      if (fs.existsSync(path.join(config.src, svgPath))) {
+      if (fs.existsSync(path.join(config.buildOptions.project.source, svgPath))) {
         // Attempt to read the SVG file
         svgContents = fs.readFileSync(
-          path.join(config.src, svgPath)
+          path.join(config.buildOptions.project.source, svgPath)
         ).toString('utf8');
 
         // Loop through all occurences of the variable pattern
@@ -279,9 +332,9 @@ function inlineSvgCSS(file, cb) {
         // Attempt to optimise the SVG file
         svgContents = await svgo.optimize(svgContents);
 
-        // Format the interpolated and optimised SVG file as a data URI
+        // Format the interpolated and optimized SVG file as a data URI
         svgContents = (
-          config.svgo.encode
+          config.buildOptions.svgo.encode
             ? `url('data:image/svg+xml,${encodeURIComponent(svgContents.data)}')`
             : `url('data:image/svg+xml,charset=UTF-8,${svgContents.data}')`
         );
@@ -293,7 +346,7 @@ function inlineSvgCSS(file, cb) {
 
         urlPattern.lastIndex = (urlMatch.index + 1);
       } else {
-        console.log(`Inline SVG in CSS: File: ${path.join(config.src, svgPath)} does not exist`);
+        console.log(`Inline SVG in CSS: File: ${path.join(config.buildOptions.project.source, svgPath)} does not exist`);
       }
     }
 
@@ -302,48 +355,45 @@ function inlineSvgCSS(file, cb) {
   }
 }
 
-
-// JS
+/**
+ * Compile javascript to ES5, minify and bundle script file.
+ * Move javascript libraries to destination.
+ */
 function jsTask() {
-  return gulp.src(
-    `${config.src}/script/script.js`,
-    { base: `${config.src}/script`, allowEmpty: true })
-  .pipe(rename('script.min.js'))
-  .pipe(gulp.dest(config.dest))
+  return rollup({
+    input: config.buildOptions.javascript.source,
+    plugins: [ terser() ]
+  })
+  .then(bundle => {
+    return bundle.write({
+      file: config.buildOptions.javascript.destination,
+      format: 'iife',
+      sourcemap: (ENVIRONMENT === 'development')
+    });
+  })
+
   &&
-  gulp.src(`${config.src}/script/lib/*.js`, { base: `${config.src}`, allowEmpty: true })
-  .pipe(gulp.dest(config.dest));
+
+  // Move script libraries to destination.
+  gulp.src(config.buildOptions.javascript.libs, { base: config.buildOptions.project.source, allowEmpty: true })
+  .pipe(gulp.dest(config.buildOptions.project.destination));
 }
 
-
-// JS
-function jsTaskBuild() {
-  return gulp.src(
-    `${config.src}/script/script.js`,
-    { base: `${config.src}/script`, allowEmpty: true })
-  .pipe(babel({
-      presets: ['@babel/env']
-  }))
-  .pipe(rename('script.min.js'))
-  .pipe(uglify())
-  .pipe(gulp.dest(config.dest))
-  &&
-  gulp.src(`${config.src}/script/lib/*.js`, { base: `${config.src}`, allowEmpty: true })
-  .pipe(gulp.dest(config.dest));
-}
-
-
-// Serve
+/**
+ * Serve the website through BrowserSync with a PHP server.
+ *
+ * @param {function} done
+ */
 function serve(done) {
   connect.server({
-    base: config.dest,
-    port: parseInt(config.port) + 1,
+    base: config.buildOptions.project.destination,
+    port: parseInt(config.buildOptions.server.port) + 1,
     keepalive: true
   });
 
   browserSync.init({
-    proxy: `127.0.0.1:${parseInt(config.port) + 1}`,
-    port: config.port,
+    proxy: `127.0.0.1:${parseInt(config.buildOptions.server.port) + 1}`,
+    port: config.buildOptions.server.port,
     open: true,
     notify: false
   });
@@ -351,29 +401,26 @@ function serve(done) {
   done();
 }
 
-
-// Watch
+/**
+ * Default watch task for every relevant file for the project.
+ */
 function watchTask() {
-  gulp.watch(`${config.src}/assets/**/*.{jpg,png}`, gulp.series(imageAssetsTask, reload));
+  gulp.watch(
+    config.buildOptions.images.jpg.concat(
+      config.buildOptions.images.png
+    ), gulp.series(imageAssetsTask, reload));
 
-  gulp.watch([
-    `${config.src}/assets/**/*`,
-    `!${config.src}/assets/**/*.{fla,jpg,png}`,
-    `!${config.src}/assets/**/_*.svg`,
-    `${config.src}/assets/**/duotone.jpg`,
-    `${config.src}/assets/**/duotone.webp`
-  ], gulp.series(otherAssetsTask, htmlTask, reload));
+  gulp.watch(config.buildOptions.otherAssets, gulp.series(otherAssetsTask, htmlTask, reload));
 
-  gulp.watch([
-    `${config.src}/**/*.php`,
-    `${config.src}/**/*.md`
-  ], gulp.series(htmlTask, reload));
+  gulp.watch(config.buildOptions.pages, gulp.series(htmlTask, reload));
 
-  gulp.watch(`${config.src}/scss/**/*.scss`, scssTask);
+  gulp.watch(config.buildOptions.scss.source, scssTask);
 
-  gulp.watch(`${config.src}/script/**/*.js`, gulp.series(jsTask, reload));
+  gulp.watch(
+    config.buildOptions.javascript.source.concat(
+      config.buildOptions.javascript.libs
+    ), gulp.series(jsTask, reload));
 }
-
 
 // Default task
 gulp.task('default',
@@ -396,8 +443,10 @@ gulp.task('default',
   )
 );
 
+// Deploy task
 gulp.task('deploy',
   gulp.series(
+    setDeployEnvironment,
     clean,
     faviconTask,
     imageAssetsTask,
@@ -406,7 +455,7 @@ gulp.task('deploy',
       otherAssetsTask,
       htmlTask,
       scssTask,
-      jsTaskBuild
+      jsTask
     ),
 
     gulp.parallel(
@@ -416,6 +465,7 @@ gulp.task('deploy',
   )
 );
 
+// skipFavicons
 gulp.task('skipFavicons',
   gulp.series(
     clean,
@@ -435,17 +485,22 @@ gulp.task('skipFavicons',
   )
 );
 
-gulp.task('skipAssets',
+// skipImageAssets
+gulp.task('skipImageAssets',
   gulp.series(
     gulp.parallel(
       otherAssetsTask,
       htmlTask,
       scssTask,
       jsTask
+    ),
+
+    gulp.parallel(
+      serve,
+      watchTask
     )
   )
 );
-
 
 // ASCII flair
 console.log(`---------------------------------------------------------------
