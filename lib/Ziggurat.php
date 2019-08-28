@@ -275,7 +275,11 @@ class Ziggurat
 
     $this->resolvedPage = &$page;
 
-    if (isset($page) && empty($page['html']) && $this->databaseEnabled && !$index) {
+    if (isset($page)
+        && empty($page['html'])
+        && $this->databaseEnabled
+        && !$index
+        && !(isset($page['properties']['ignore']) && $page['properties']['ignore'] == 'true')) {
       $query = <<<SQL
         SELECT
           html
