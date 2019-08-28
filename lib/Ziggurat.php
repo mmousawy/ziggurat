@@ -239,6 +239,10 @@ class Ziggurat
     $siteMapData = [];
 
     foreach ($this->pages as $page) {
+      if (isset($page['properties']['ignore']) && $page['properties']['ignore'] === 'true') {
+        continue;
+      }
+
       $siteMapEntry = [
         'url' => [
           'loc' => $hostURL . ($page['slug_path'] === 'index' ? '' : ('/' . $page['slug_path'])),
