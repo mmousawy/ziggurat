@@ -219,8 +219,8 @@ function htmlTask() {
  */
 function scssTask() {
   return gulp.src(
-    `${config.buildOptions.project.source}/scss/style.scss`,
-    { base: `${config.buildOptions.project.source}/scss`, allowEmpty: true })
+    config.buildOptions.scss.source,
+    { base: config.buildOptions.scss.base, allowEmpty: true })
   .pipe(gulpif(ENVIRONMENT === 'development', sourcemaps.init()))
   .pipe(scss({ outputStyle: 'compact' }))
     .on('error', notify.onError('SCSS compile error: <%= error.message %>'))
@@ -229,7 +229,7 @@ function scssTask() {
     .on('error', notify.onError('Inline SVG error: <%= error.message %>'))
   .pipe(csso())
   .pipe(gulpif(ENVIRONMENT === 'development', sourcemaps.write()))
-  .pipe(gulp.dest(config.buildOptions.project.destination))
+  .pipe(gulp.dest(config.buildOptions.scss.destination))
   .pipe(browserSync.stream());
 }
 
@@ -410,7 +410,7 @@ function watchTask() {
 
   gulp.watch(config.buildOptions.pages, gulp.series(htmlTask, reload));
 
-  gulp.watch(config.buildOptions.scss.source, scssTask);
+  gulp.watch(config.buildOptions.scss.watch, scssTask);
 
   gulp.watch(
     config.buildOptions.javascript.source.concat(
