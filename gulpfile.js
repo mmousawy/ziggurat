@@ -228,7 +228,7 @@ function scssTask() {
   .pipe(map(inlineSvgCSS()))
     .on('error', notify.onError('Inline SVG error: <%= error.message %>'))
   .pipe(csso())
-  .pipe(gulpif(ENVIRONMENT === 'development', sourcemaps.write()))
+  .pipe(gulpif(ENVIRONMENT === 'development', sourcemaps.write('.')))
   .pipe(gulp.dest(config.buildOptions.scss.destination))
   .pipe(browserSync.stream());
 }
