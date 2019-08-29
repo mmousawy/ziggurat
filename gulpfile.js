@@ -57,7 +57,7 @@ const browserSync  = require('browser-sync').create();
  */
 const config = require('./config.json');
 
-// Initialise SVGO
+// Initialize SVGO
 const SVGO = require('svgo');
 const svgo = new SVGO(config.svgo || {});
 let ENVIRONMENT = 'development';
@@ -222,7 +222,7 @@ function scssTask() {
     `${config.buildOptions.project.source}/scss/style.scss`,
     { base: `${config.buildOptions.project.source}/scss`, allowEmpty: true })
   .pipe(gulpif(ENVIRONMENT === 'development', sourcemaps.init()))
-  .pipe(scss({ outputStyle: 'compressed' }))
+  .pipe(scss({ outputStyle: 'compact' }))
     .on('error', notify.onError('SCSS compile error: <%= error.message %>'))
   .pipe(autoprefixer({ overrideBrowserslist: config.buildOptions.scss.browserList }))
   .pipe(map(inlineSvgCSS()))
@@ -258,10 +258,6 @@ function inlineSvgHTML(file, cb) {
         ).toString('utf8');
 
         svgContents = svgContents.replace(/<svg\s(.+?)>/, `<svg $1 ${svgAttributes}>`);
-
-        // Attempt to optimise the SVG file
-        // svgContents = await svgo.optimize(svgContents);
-        // svgContents = svgContents.data;
 
         // Replace the matched string with the data URI
         fileContents = fileContents.slice(0, urlMatch.index)

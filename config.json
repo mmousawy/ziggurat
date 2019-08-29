@@ -11,8 +11,10 @@
       "example/murtada.nl-ziggurat/src/**/*.php"
     ],
     "scss": {
-      "source": "example/murtada.nl-ziggurat/src/scss/**.*.scss",
-      "destination": "example/murtada.nl-ziggurat/dist/style.css",
+      "source": "example/murtada.nl-ziggurat/src/scss/style.scss",
+      "watch": "example/murtada.nl-ziggurat/src/scss/**/*.scss",
+      "base": "example/murtada.nl-ziggurat/src/scss",
+      "destination": "example/murtada.nl-ziggurat/dist/",
       "browserList": "last 1 version, chrome > 70, not dead"
     },
     "javascript": {
