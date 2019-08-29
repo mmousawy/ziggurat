@@ -38,6 +38,7 @@
     "gulp-sass": "^4.0.2",
     "gulp-sourcemaps": "^2.6.5",
     "imagemin-pngquant": "^7.0.0",
+    "map-stream": "0.0.7",
     "path": "^0.12.7",
     "png-to-jpeg": "^1.0.1",
     "querystring": "^0.2.0",
