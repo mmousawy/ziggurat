@@ -2,7 +2,7 @@
 
 namespace MMousawy;
 
-require '../../../Parsedown/Parsedown.php';
+require 'Parsedown/Parsedown.php';
 
 class Ziggurat
 {
@@ -31,7 +31,7 @@ class Ziggurat
     $this->Parsedown = new \Parsedown();
 
     $this->options = [
-      'base_dir' => '.',
+      'base_dir' => getcwd(),
       'pages_dir' => './pages',
       'template' => './template',
       'enable_cache' => false,
@@ -45,6 +45,24 @@ class Ziggurat
     if ($this->options['enable_cache'] === true) {
       $this->databaseEnabled = $this->initDatabase();
       $this->loadCache();
+    }
+
+    // Hook the custom error page to the PHP shutdown event
+    if (isset($this->options['error'])) {
+      register_shutdown_function([ $this, 'shutDownHandler' ]);
+    }
+  }
+
+
+  function shutDownHandler() {
+    $error = error_get_last();
+
+    if ($error) {
+      header('HTTP/1.1 500 Internal Server Error');
+
+      $errorPage = $this->searchPage('error');
+
+      echo $this->render($errorPage);
     }
   }
 
@@ -311,7 +329,7 @@ class Ziggurat
     }
 
     if (empty($page['path'])) {
-      header('HTTP/1.0 404 Not Found');
+      header('HTTP/1.1 404 Not Found');
       $page = $this->searchPage('404');
     }
 
@@ -321,7 +339,8 @@ class Ziggurat
     }
 
     ob_start();
-    require $page['path'];
+
+    require $this->options['base_dir'] . '/' . $page['path'];
     $page['content'] = ob_get_clean();
 
     // Render markdown file with Parsedown
