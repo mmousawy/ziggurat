@@ -1,0 +1,6 @@
+[submodule "lib/Parsedown"]
+	path = lib/Parsedown
+	url = https://github.com/erusev/parsedown.git
+[submodule "example/murtada.nl-ziggurat"]
+	path = example/murtada.nl-ziggurat
+	url = https://github.com/mmousawy/murtada.nl-ziggurat.git
