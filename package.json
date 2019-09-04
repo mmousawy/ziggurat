@@ -1,14 +1,11 @@
 {
   "name": "ziggurat",
   "version": "1.0.0",
-  "description": "A simple dynamic site router with Markdown support.",
+  "description": "A dynamic site router and development toolchain for PHP websites with Markdown support.",
   "main": "gulpfile.js",
   "directories": {
     "example": "example",
     "lib": "lib"
-  },
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
     "type": "git",
@@ -22,6 +19,7 @@
   "homepage": "https://github.com/mmousawy/ziggurat#readme",
   "devDependencies": {
     "browser-sync": "^2.26.7",
+    "chalk": "^2.4.2",
     "del": "^4.1.1",
     "favicons": "^5.4.1",
     "fs": "0.0.1-security",
@@ -44,6 +42,7 @@
     "querystring": "^0.2.0",
     "rollup": "^1.20.2",
     "rollup-plugin-terser": "^5.1.1",
-    "sharp": "^0.22.1"
+    "sharp": "^0.22.1",
+    "yargs": "^14.0.0"
   }
 }

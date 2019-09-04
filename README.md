@@ -5,7 +5,7 @@
 
 ## What is Ziggurat?
 
-A complete development toolchain for building websites including a simple dynamic site router with Markdown support written in Node and PHP.
+A complete development toolchain with dynamic site routing and Markdown support for PHP websites.
 
 
 ## Features

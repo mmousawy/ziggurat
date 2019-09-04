@@ -1,17 +1,28 @@
 /**
- * Default gulpfile for Ziggurat.
+ * Ziggurat Core.
+ *
+ * A PHP-based URL router that reads specific metadata in PHP files to index and create
+ * a dynamic page structure. The core also provides other features like templating,
+ * listing child-pages and built-in Markdown support.
+ *
+ * @author  Murtada al Mousawy <https://murtada.nl>
+ * @link    https://github.com/mmousawy/ziggurat
+ * @license MIT
+ */
+
+/**
  * This file contains all the individual tasks for the following gulp tasks:
  *
- *  gulp [default]
+ *  npm run ziggurat [default]
  *    Clean, build and watch for changes for all files.
  *
- *  gulp deploy
+ *  npm run ziggurat deploy
  *    Clean, build for deployment (no sourcemaps) and watch for changes for all files.
  *
- *  gulp skipFavicons
+ *  npm run ziggurat skipFavicons
  *    Clean, build but skip favicons generation and watch for changes for all files.
  *
- *  gulp skipImageAssets
+ *  npm run ziggurat skipImageAssets
  *    Don't clean, build but skip generating images, watch for all files.
  */
 
@@ -20,6 +31,8 @@ const gulp         = require('gulp');
 const fs           = require('fs');
 const del          = require('del');
 const path         = require('path');
+const argv         = require('yargs').argv;
+const chalk        = require('chalk');
 
 // Gulp helper packages
 const notify       = require('gulp-notify');
@@ -55,12 +68,51 @@ const browserSync  = require('browser-sync').create();
 /**
  * Load the gulp config.
  */
-const config = require('./config.json');
+const base = path.resolve((argv.project || '.'));
+
+process.cwd(base);
+
+const configLocation = path.join(base, '/ziggurat-config.json');
+
+if (!fs.existsSync(configLocation)) {
+  console.error(chalk.red(`[Ziggurat] No config file found in project folder (${configLocation})`));
+  process.exit(1);
+}
+
+const config = require(path.join(base, '/ziggurat-config.json'));
+config.buildOptions.project.source = path.resolve(base, config.buildOptions.project.source);
+config.buildOptions.project.destination = path.resolve(base, config.buildOptions.project.destination);
 
 // Initialize SVGO
 const SVGO = require('svgo');
 const svgo = new SVGO(config.svgo || {});
 let ENVIRONMENT = 'development';
+
+function createSource(location, prefix) {
+  if (typeof location === 'string') {
+    return path.join(
+      prefix || config.buildOptions.project.source,
+      location
+    );
+  } else if (location instanceof Array) {
+    return location.map(src => {
+      let not = '';
+
+      if (src.indexOf('!') === 0) {
+        not = '!';
+      }
+
+      return not + path.join(
+        prefix || config.buildOptions.project.source,
+        src
+      );
+    });
+  }
+
+  console.error(chalk.red(`[Ziggurat] Could not create source for: ${location}`));
+
+  return false;
+}
 
 // Individual Gulp tasks are below.
 
@@ -101,7 +153,7 @@ function clean() {
 function processImage(type, size) {
   return new Promise((resolve, reject) => {
     // Go through each glob depending on the type
-    gulp.src(config.buildOptions.images[type],
+    gulp.src(createSource(config.buildOptions.images[type]),
       { base: config.buildOptions.project.source })
     .pipe(cache(`assets-${type}-${size}`, { optimizeMemory: true }))
     .pipe(
@@ -182,7 +234,12 @@ function imageAssetsTask(done) {
  * Move all other assets.
  */
 function otherAssetsTask() {
-  return gulp.src(config.buildOptions.otherAssets, { base: config.buildOptions.project.source })
+  const source = createSource(config.buildOptions.otherAssets.source);
+
+  return gulp.src(source, {
+    base: config.buildOptions.project.source,
+    allowEmpty: true
+  })
   .pipe(cache('assets-other', { optimizeMemory: true }))
   .pipe(gulp.dest(config.buildOptions.project.destination));
 }
@@ -192,16 +249,17 @@ function otherAssetsTask() {
  */
 function faviconTask() {
   return gulp.src(
-    config.buildOptions.favicons.source,
-    { base: config.buildOptions.project.source })
+    createSource(config.buildOptions.favicons.source),
+    { base: config.buildOptions.project.source,
+      allowEmpty: true })
   .pipe(favicons(config.buildOptions.favicons.options))
     .on('error', notify.onError('Favicon generator error: <%= error.message %>'))
-  .pipe(gulp.dest(config.buildOptions.favicons.destination))
+  .pipe(gulp.dest(path.join(config.buildOptions.project.destination, config.buildOptions.favicons.options.path)))
 
   &&
 
   // Move favicon to destination root
-  gulp.src(`${config.buildOptions.project.destination}/favicons/favicon.ico`, { allowEmpty: true })
+  gulp.src(path.join(config.buildOptions.project.destination, '/favicons/favicon.ico'), { allowEmpty: true })
   .pipe(gulp.dest(config.buildOptions.project.destination));
 }
 
@@ -209,7 +267,7 @@ function faviconTask() {
  * Move HTML and PHP files to destination while inlining SVG files.
  */
 function htmlTask() {
-  return gulp.src(config.buildOptions.pages, { base: config.buildOptions.project.source })
+  return gulp.src(createSource(config.buildOptions.pages), { base: config.buildOptions.project.source })
   .pipe(map(inlineSvgHTML()))
   .pipe(gulp.dest(config.buildOptions.project.destination));
 }
@@ -219,8 +277,8 @@ function htmlTask() {
  */
 function scssTask() {
   return gulp.src(
-    config.buildOptions.scss.source,
-    { base: config.buildOptions.scss.base, allowEmpty: true })
+    createSource(config.buildOptions.scss.source),
+    { base: createSource(config.buildOptions.scss.base), allowEmpty: true })
   .pipe(gulpif(ENVIRONMENT === 'development', sourcemaps.init()))
   .pipe(scss({ outputStyle: 'compact' }))
     .on('error', notify.onError('SCSS compile error: <%= error.message %>'))
@@ -229,7 +287,7 @@ function scssTask() {
     .on('error', notify.onError('Inline SVG error: <%= error.message %>'))
   .pipe(csso())
   .pipe(gulpif(ENVIRONMENT === 'development', sourcemaps.write('.')))
-  .pipe(gulp.dest(config.buildOptions.scss.destination))
+  .pipe(gulp.dest(createSource(config.buildOptions.scss.destination, config.buildOptions.project.destination)))
   .pipe(browserSync.stream());
 }
 
@@ -357,21 +415,24 @@ function inlineSvgCSS(file, cb) {
  */
 function jsTask() {
   return rollup({
-    input: config.buildOptions.javascript.source,
+    input: createSource(config.buildOptions.javascript.source),
     plugins: [ terser() ]
   })
   .then(bundle => {
     return bundle.write({
-      file: config.buildOptions.javascript.destination,
+      file: createSource(config.buildOptions.javascript.destination, config.buildOptions.project.destination),
       format: 'iife',
       sourcemap: (ENVIRONMENT === 'development')
     });
+  })
+  .catch(error => {
+    notify.onError('Could not compile JS: <%= error.message %>')
   })
 
   &&
 
   // Move script libraries to destination.
-  gulp.src(config.buildOptions.javascript.libs, { base: config.buildOptions.project.source, allowEmpty: true })
+  gulp.src(createSource(config.buildOptions.javascript.libs), { base: config.buildOptions.project.source, allowEmpty: true })
   .pipe(gulp.dest(config.buildOptions.project.destination));
 }
 
@@ -381,8 +442,16 @@ function jsTask() {
  * @param {function} done
  */
 function serve(done) {
+  const source = path.resolve(config.buildOptions.project.destination);
+
+  console.log(chalk.green(`[Ziggurat]: Now serving from: ${source}`));
+
+  if (!fs.existsSync(source)) {
+    return false;
+  }
+
   connect.server({
-    base: config.buildOptions.project.destination,
+    base: source,
     port: parseInt(config.buildOptions.server.port) + 1,
     keepalive: true
   });
@@ -402,20 +471,20 @@ function serve(done) {
  */
 function watchTask() {
   gulp.watch(
-    config.buildOptions.images.jpg.concat(
+    createSource(config.buildOptions.images.jpg.concat(
       config.buildOptions.images.png
-    ), gulp.series(imageAssetsTask, reload));
+    )), gulp.series(imageAssetsTask, reload));
 
-  gulp.watch(config.buildOptions.otherAssets, gulp.series(otherAssetsTask, htmlTask, reload));
+  gulp.watch(createSource(config.buildOptions.otherAssets.source), gulp.series(otherAssetsTask, htmlTask, reload));
 
-  gulp.watch(config.buildOptions.pages, gulp.series(htmlTask, reload));
+  gulp.watch(createSource(config.buildOptions.pages), gulp.series(htmlTask, reload));
 
-  gulp.watch(config.buildOptions.scss.watch, scssTask);
+  gulp.watch(createSource(config.buildOptions.scss.watch), scssTask);
 
   gulp.watch(
-    config.buildOptions.javascript.source.concat(
+    createSource(config.buildOptions.javascript.source.concat(
       config.buildOptions.javascript.libs
-    ), gulp.series(jsTask, reload));
+    )), gulp.series(jsTask, reload));
 }
 
 // Default task
@@ -499,11 +568,9 @@ gulp.task('skipImageAssets',
 );
 
 // ASCII flair
-console.log(`---------------------------------------------------------------
-███████╗██╗ ██████╗  ██████╗ ██╗   ██╗██████╗  █████╗ ████████╗
-╚══███╔╝██║██╔════╝ ██╔════╝ ██║   ██║██╔══██╗██╔══██╗╚══██╔══╝
-  ███╔╝ ██║██║  ███╗██║  ███╗██║   ██║██████╔╝███████║   ██║
- ███╔╝  ██║██║   ██║██║   ██║██║   ██║██╔══██╗██╔══██║   ██║
-███████╗██║╚██████╔╝╚██████╔╝╚██████╔╝██║  ██║██║  ██║   ██║
-╚══════╝╚═╝ ╚═════╝  ╚═════╝  ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝
----------------------------------------------------------------`);
+console.log(`      _                         __
+ ___ (_)__ ____ ___ _________ _/ /_
+/_ // / _ \`/ _ \`/ // / __/ _ \`/ __/
+/__/_/\\_, /\\_, /\\_,_/_/  \\_,_/\\__/
+     /___//___/
+`);
