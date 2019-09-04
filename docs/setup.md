@@ -7,32 +7,24 @@ Below you'll find the suggested way to structure your project to make sure Ziggu
 
 ```bash
 ziggurat/
-├── lib/
-|   ├── MMousawy/
-|   |   └── Ziggurat.php          # Ziggurat Core
-|   └── Parsedown/                # Parsedown library
-|
-├── your-project/                 # Root folder for your project
-|   ├── dist/                     # Destination folder
-|   └── src/                      # Source folder
-|       ├── pages/
-|       |   └── index.php         # Project's homepage
-|       |
-|       ├── template/
-|       ├── js/
-|       ├── scss/
-|       ├── assets/
-|       ├── ziggurat-config.json  # Project's toolchain configuration
-|       └── index.php             # Project's index file
-|
-├── ziggurat.js                   # Ziggurat Development start script
-├── toolchain.js                  # Ziggurat Toolchain script
-└── package.json                  # Ziggurat package file
+├── ...                               # Ziggurat files
+└── projects/                         # Projects folder
+    └── your-project/                 # Root folder for your project
+        └── src/                      # Project's source folder
+            ├── pages/
+            |   └── home.php          # Project's homepage
+            |
+            ├── template/
+            ├── js/
+            ├── scss/
+            ├── assets/
+            ├── ziggurat-config.json  # Project's toolchain configuration
+            └── index.php             # Project's index file
 ```
 
 
 ## Running Ziggurat
-When you've set your project up to have at least a `ziggurat-config.json` with an `index.php` in the root folder and another `index.php` in the pages folder, you can run the toolchain to build and serve your project.
+When you've set your project up to have at least a `ziggurat-config.json` with an `index.php` in the root folder and a `home.php` in the pages folder, you can run the toolchain to build and serve your project.
 
 ```bash
 $ npm run ziggurat -- --project your-project/
