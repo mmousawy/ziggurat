@@ -1,4 +1,4 @@
-![Ziggurat logo](https://raw.githubusercontent.com/mmousawy/ziggurat/master/ziggurat-logo-type.svg?sanitize=true)
+![Ziggurat logo](https://mmousawy.github.io/ziggurat/assets/ziggurat-logo-type.svg)
 
 ---
 
@@ -6,6 +6,11 @@
 ## What is Ziggurat?
 
 A complete development toolchain with dynamic site routing and Markdown support for PHP websites.
+
+
+## Documentation
+
+Read the Ziggurat Documentation and guide: https://mmousawy.github.io/ziggurat
 
 
 ## Features
