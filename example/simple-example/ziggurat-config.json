@@ -1,0 +1,69 @@
+{
+  "buildOptions": {
+    "project": {
+      "source": "src",
+      "destination": "dist"
+    },
+    "server": {
+      "port": 5050
+    },
+    "pages": [
+      "/**/*.php"
+    ],
+    "scss": {
+      "source": "scss/style.scss",
+      "watch": "scss/**/*.scss",
+      "base": "scss",
+      "destination": "/",
+      "browserList": "last 1 version, chrome > 70, not dead"
+    },
+    "javascript": {
+      "source": "script/script.js",
+      "destination": "script.min.js",
+      "libs": "script/lib/*.js"
+    },
+    "images": {
+      "jpg": [
+        "assets/img/**/*.{jpg,png}"
+      ],
+      "png": [
+        "assets/images/**/_*.png"
+      ],
+      "sizes": {
+        "jpg": [
+          512,
+          1024
+        ],
+        "png": [
+          512,
+          1024,
+          1920
+        ]
+      }
+    },
+    "svgo": {
+      "encode": true
+    },
+    "favicons": {
+      "source": "favicon.png",
+      "destination": "favicons",
+      "options": {
+        "path": "/favicons/",
+        "appName": "Murtada.nl website",
+        "appShortName": "Murtada.nl",
+        "appDescription": "Personal portfolio and blog of Murtada al Mousawy"
+      }
+    },
+    "otherAssets": {
+      "source": [
+        "robots.txt",
+        "humans.txt",
+        "assets/**/*",
+        "!assets/**/*.{fla,jpg,png,psd,ai}",
+        "!assets/**/_*.svg",
+        "assets/**/duotone.jpg",
+        "assets/**/duotone.webp"
+      ]
+    }
+  }
+}
