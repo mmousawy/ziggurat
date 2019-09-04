@@ -25,7 +25,8 @@ ziggurat/
 |       ├── ziggurat-config.json  # Project's toolchain configuration
 |       └── index.php             # Project's index file
 |
-├── gulpfile.js                   # Ziggurat Toolchain Gulp file
+├── ziggurat.js                   # Ziggurat Development start script
+├── toolchain.js                  # Ziggurat Toolchain script
 └── package.json                  # Ziggurat package file
 ```
 
@@ -34,5 +35,5 @@ ziggurat/
 When you've set your project up to have at least a `ziggurat-config.json` with an `index.php` in the root folder and another `index.php` in the pages folder, you can run the toolchain to build and serve your project.
 
 ```bash
-$ npm run ziggurat --project your-project/
+$ npm run ziggurat -- --project your-project/
 ```

@@ -1,9 +1,9 @@
 # Using Ziggurat Toolchain
-
 The Toolchain will provide you with an automated development server to run your project in. It will build certain files, watch for changes and move/copy all the project files.
 
+
 ## Running the toolchain
-By running Ziggurat, you will automatically run the toolchain.
+To run the Ziggurat Toolchain, you can run the npm script called `ziggurat`. This will automatically spin up the build script and the watch server.
 
 ```bash
 $ npm run ziggurat
@@ -29,11 +29,11 @@ Depending on whether you have provided locations for the processes below, the bu
     - Spins up a PHP server, proxied behind a BrowserSync instance to run and serve your project. Will automatically refresh your browser when there's a change.
 
 
-### Ziggurat toolchain arguments
+## Arguments & flags
 You can provide a single optional argument to run the Ziggurat Toolchain with a specific build process.
 
 ```bash
-$ npm run ziggurat [args]
+$ npm run ziggurat [args] [-- --flag <value>]
 
 $ npm run ziggurat
 # Default. Clean, build and watch for changes for all files.
@@ -48,43 +48,57 @@ $ npm run ziggurat skipImageAssets
 # Don't clean, build but skip generating favicons and images, watch for all files.
 ```
 
+### Flags
+To add a flag, you have to type double dashes `--` after the argument list. The `--project` flag is required.
+
+```bash
+$ npm run ziggurat -- --project your-project/
+```
+
+### Debug mode
+To have more verbosity from Ziggurat, you can run Ziggurat in debug mode:
+
+```bash
+$ npm run ziggurat-debug [args] [-- --flag <value>]
+```
+
 
 ## Configuration
-You can manually override file locations and build options by editing `ziggurat-config.json`.
+For the toolchain, you are required to have a config file named `ziggurat-config.json` in the root of your project folder.
+
+Here's an example of how the config should look like:
 
 ```json
 {
   "buildOptions": {
     "project": {
-      "source": "src/",
-      "destination": "examples/murtada.nl-ziggurat/dist"
+      "source": "src",
+      "destination": "dist"
     },
     "server": {
       "port": 5050
     },
     "pages": [
-      "examples/murtada.nl-ziggurat/src/**/*.php"
+      "/**/*.php"
     ],
     "scss": {
-      "source": "examples/murtada.nl-ziggurat/src/scss/style.scss",
-      "watch": "examples/murtada.nl-ziggurat/src/scss/**/*.scss",
-      "base": "examples/murtada.nl-ziggurat/src/scss",
-      "destination": "examples/murtada.nl-ziggurat/dist/",
+      "source": "scss/style.scss",
+      "watch": "scss/**/*.scss",
+      "base": "scss",
+      "destination": "/",
       "browserList": "last 1 version, chrome > 70, not dead"
     },
     "javascript": {
-      "source": "examples/murtada.nl-ziggurat/src/script/script.js",
-      "destination": "examples/murtada.nl-ziggurat/dist/script.min.js",
-      "libs": "examples/murtada.nl-ziggurat/src/script/lib/*.js"
+      "source": "script/script.js",
+      "destination": "script.min.js",
+      "libs": "script/lib/*.js"
     },
     "images": {
       "jpg": [
-        "examples/murtada.nl-ziggurat/src/assets/images/**/*.{jpg,png}",
-        "!examples/murtada.nl-ziggurat/src/assets/images/**/_*.png",
-        "!examples/murtada.nl-ziggurat/src/assets/images/duotone.jpg"
+        "assets/img/**/*.jpg"
       ],
       "png": [
-        "examples/murtada.nl-ziggurat/src/assets/images/**/_*.png"
+        "assets/img/**/*.png"
       ],
       "sizes": {
         "jpg": [
@@ -102,24 +116,21 @@ You can manually override file locations and build options by editing `ziggurat-
       "encode": true
     },
     "favicons": {
-      "source": "examples/murtada.nl-ziggurat/src/favicon.png",
-      "destination": "examples/murtada.nl-ziggurat/dist/favicons",
+      "source": "favicon.png",
+      "destination": "favicons",
       "options": {
         "path": "/favicons/",
-        "appName": "Murtada.nl website",
-        "appShortName": "Murtada.nl",
-        "appDescription": "Personal portfolio and blog of Murtada al Mousawy"
+        "appName": "My project",
+        "appShortName": "My project",
+        "appDescription": "Example project"
       }
     },
-    "otherAssets": [
-      "examples/murtada.nl-ziggurat/src/robots.txt",
-      "examples/murtada.nl-ziggurat/src/humans.txt",
-      "examples/murtada.nl-ziggurat/src/assets/**/*",
-      "!examples/murtada.nl-ziggurat/src/assets/**/*.{fla,jpg,png,psd,ai}",
-      "!examples/murtada.nl-ziggurat/src/assets/**/_*.svg",
-      "examples/murtada.nl-ziggurat/src/assets/**/duotone.jpg",
-      "examples/murtada.nl-ziggurat/src/assets/**/duotone.webp"
-    ]
+    "otherAssets": {
+      "source": [
+        "robots.txt",
+        "humans.txt"
+      ]
+    }
   }
 }
 ```

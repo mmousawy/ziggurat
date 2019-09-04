@@ -27,8 +27,15 @@ $ cd ziggurat
 $ npm i
 ```
 
-3. Run Ziggurat inside the cloned folder
+3. Copy the `ziggurat-config.json` file to your project folder.
 
 ```bash
-$ npm run ziggurat
+$ mkdir your-project
+$ cp ziggurat-config.default.json your-project/ziggurat-config.json
+```
+
+4. Run Ziggurat inside the cloned folder while providing your project folder.
+
+```bash
+$ npm run ziggurat -- --project your-project/
 ```
