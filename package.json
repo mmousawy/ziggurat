@@ -44,5 +44,9 @@
     "rollup-plugin-terser": "^5.1.1",
     "sharp": "^0.22.1",
     "yargs": "^14.0.0"
+  },
+  "scripts": {
+    "ziggurat": "node ziggurat.js",
+    "ziggurat-debug": "node ziggurat.js --debug 1"
   }
 }

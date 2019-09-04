@@ -10,22 +10,6 @@
  * @license MIT
  */
 
-/**
- * This file contains all the individual tasks for the following gulp tasks:
- *
- *  npm run ziggurat [default]
- *    Clean, build and watch for changes for all files.
- *
- *  npm run ziggurat deploy
- *    Clean, build for deployment (no sourcemaps) and watch for changes for all files.
- *
- *  npm run ziggurat skipFavicons
- *    Clean, build but skip favicons generation and watch for changes for all files.
- *
- *  npm run ziggurat skipImageAssets
- *    Don't clean, build but skip generating images, watch for all files.
- */
-
 // Base packages
 const gulp         = require('gulp');
 const fs           = require('fs');
@@ -33,6 +17,32 @@ const del          = require('del');
 const path         = require('path');
 const argv         = require('yargs').argv;
 const chalk        = require('chalk');
+
+// ASCII flair
+console.log(chalk.hex('#9B4E55').bold(`      _                         __
+ ___ (_)__ ____ ___ _________ _/ /_
+/_ // / _ \`/ _ \`/ // / __/ _ \`/ __/
+/__/_/\\_, /\\_, /\\_,_/_/  \\_,_/\\__/
+     /___//___/
+`));
+
+/**
+ * Load the gulp config.
+ */
+const base = path.resolve((argv.project || '.'));
+
+process.cwd(base);
+
+const configLocation = path.join(base, '/ziggurat-config.json');
+
+if (!fs.existsSync(configLocation)) {
+  console.error(chalk.red(`[Ziggurat] No config file found in project folder (${configLocation})`));
+  process.exit(5);
+}
+
+const config = require(path.join(base, '/ziggurat-config.json'));
+config.buildOptions.project.source = path.resolve(base, config.buildOptions.project.source);
+config.buildOptions.project.destination = path.resolve(base, config.buildOptions.project.destination);
 
 // Gulp helper packages
 const notify       = require('gulp-notify');
@@ -65,24 +75,6 @@ const favicons     = require('gulp-favicons');
 const connect      = require('gulp-connect-php');
 const browserSync  = require('browser-sync').create();
 
-/**
- * Load the gulp config.
- */
-const base = path.resolve((argv.project || '.'));
-
-process.cwd(base);
-
-const configLocation = path.join(base, '/ziggurat-config.json');
-
-if (!fs.existsSync(configLocation)) {
-  console.error(chalk.red(`[Ziggurat] No config file found in project folder (${configLocation})`));
-  process.exit(1);
-}
-
-const config = require(path.join(base, '/ziggurat-config.json'));
-config.buildOptions.project.source = path.resolve(base, config.buildOptions.project.source);
-config.buildOptions.project.destination = path.resolve(base, config.buildOptions.project.destination);
-
 // Initialize SVGO
 const SVGO = require('svgo');
 const svgo = new SVGO(config.svgo || {});
@@ -114,7 +106,21 @@ function createSource(location, prefix) {
   return false;
 }
 
-// Individual Gulp tasks are below.
+/**
+ * This file contains all the individual tasks for the following gulp tasks:
+ *
+ *  npm run ziggurat [default]
+ *    Clean, build and watch for changes for all files.
+ *
+ *  npm run ziggurat deploy
+ *    Clean, build for deployment (no sourcemaps) and watch for changes for all files.
+ *
+ *  npm run ziggurat skipFavicons
+ *    Clean, build but skip favicons generation and watch for changes for all files.
+ *
+ *  npm run ziggurat skipImageAssets
+ *    Don't clean, build but skip generating images, watch for all files.
+ */
 
 /**
  * Set the environment variable.
@@ -140,8 +146,10 @@ function reload(done) {
 /**
  * Clean the destination folder.
  */
-function clean() {
-  return del(config.buildOptions.project.destination);
+function clean(done) {
+  del(config.buildOptions.project.destination);
+  console.info(`[Ziggurat]: Done cleaning destination: ${config.buildOptions.project.destination}`);
+  done();
 }
 
 /**
@@ -153,11 +161,15 @@ function clean() {
 function processImage(type, size) {
   return new Promise((resolve, reject) => {
     // Go through each glob depending on the type
+    let imagesCount = 0;
+
     gulp.src(createSource(config.buildOptions.images[type]),
       { base: config.buildOptions.project.source })
     .pipe(cache(`assets-${type}-${size}`, { optimizeMemory: true }))
     .pipe(
       map(async (file, cb) => {
+        imagesCount++;
+
         await sharp(file.contents)
         .resize({
           width: size,
@@ -202,7 +214,10 @@ function processImage(type, size) {
       extname: `.${type}`
     }))
     .pipe(gulp.dest(config.buildOptions.project.destination))
-    .on('end', resolve);
+    .on('end', () => {
+      console.info(`[Ziggurat]: Done processing ${imagesCount} ${type} images in ${size}px`);
+      return resolve();
+    });
   });
 }
 
@@ -212,6 +227,8 @@ function processImage(type, size) {
  * @param {function} done
  */
 function imageAssetsTask(done) {
+  console.info(`[Ziggurat]: Starting image processing...`);
+
   const imageSizes = config.buildOptions.images.sizes;
 
   const processes = [];
@@ -444,8 +461,6 @@ function jsTask() {
 function serve(done) {
   const source = path.resolve(config.buildOptions.project.destination);
 
-  console.log(chalk.green(`[Ziggurat]: Now serving from: ${source}`));
-
   if (!fs.existsSync(source)) {
     return false;
   }
@@ -566,11 +581,3 @@ gulp.task('skipImageAssets',
     )
   )
 );
-
-// ASCII flair
-console.log(`      _                         __
- ___ (_)__ ____ ___ _________ _/ /_
-/_ // / _ \`/ _ \`/ // / __/ _ \`/ __/
-/__/_/\\_, /\\_, /\\_,_/_/  \\_,_/\\__/
-     /___//___/
-`);
