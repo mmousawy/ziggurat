@@ -33,6 +33,7 @@ You are required to index your project's pages after initializing Ziggurat. This
 $Ziggurat->index();
 ```
 
+### Page properties
 In order for Ziggurat to correctly index your pages, you should provide Ziggurat properties at the top of every page like so:
 
 ```php
@@ -62,18 +63,6 @@ $resolvedPage = $Ziggurat->resolve($_SERVER['REQUEST_URI']);
 
 
 ## Rendering the resolved page
-To render the resolved page, you can use the `render` method. To return the fully rendered page as a string instead of directly printing the result, you can optionally add `false` as the second parameter.
-
-```php
-// Print the page directly
-$Ziggurat->render($resolvedPage);
-
-// Return the page as a string
-$rendered = $Ziggurat->render($resolvedPage, false);
-```
-
-
-## Page properties
 To render the resolved page, you can use the `render` method. To return the fully rendered page as a string instead of directly printing the result, you can optionally add `false` as the second parameter.
 
 ```php
