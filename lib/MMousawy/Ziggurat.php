@@ -341,6 +341,7 @@ class Ziggurat
       $page = $this->searchPage('404');
     }
 
+
     // Make reference to Ziggurat available for resolved pages
     $Ziggurat = $this;
 
@@ -367,11 +368,21 @@ class Ziggurat
 
       if ($row) {
         $page['html'] = $row['html'];
+
+        if ($echo) {
+          echo $page['html'];
+        }
+
         return $page['html'];
       }
     }
 
     if (!empty($page['html']) && !$index) {
+
+      if ($echo) {
+        echo $page['html'];
+      }
+
       return $page['html'];
     }
 
@@ -405,21 +416,20 @@ class Ziggurat
     if (empty($this->options['template']['body'])) {
       // No template was provided, just render the found page
       $renderedPage = $page['content'];
+
     } else {
       // Render page with template
       ob_start();
 
       foreach ($this->options['template'] as $partName => $templatePart) {
-        $template = isset($page['template'])
-                      ? $page['template']
-                      : isset($page['properties']['template'])
-                          ? $page['properties']['template']
-                          : $templatePart;
+        if ($partName === 'body') {
+          $bodyTemplate = isset($page['properties']['template'])
+                            ? $page['properties']['template']
+                            : $templatePart;
 
-        if ($partName === 'body' && isset($template)) {
-          include_once $template;
+          include $bodyTemplate;
         } else {
-          include_once $templatePart;
+          include $templatePart;
         }
       }
 
@@ -533,6 +543,7 @@ class Ziggurat
     return true;
   }
 
+
   public function list(string $path = '', bool $isParent = true, $amount = null): array
   {
     $foundPages = [];
@@ -566,7 +577,7 @@ class Ziggurat
     return $foundPages;
   }
 
-  // Private
+
   private function searchPage(string $path = '')
   {
     $pathParts = explode('?', $path);
@@ -647,7 +658,6 @@ class Ziggurat
   }
 
 
-  // Getters
   public function getPages(): array
   {
     return $this->pages;
