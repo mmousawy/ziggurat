@@ -33,16 +33,16 @@ const base = path.resolve((argv.project || '.'));
 
 process.cwd(base);
 
-const configLocation = path.join(base, '/ziggurat-config.json');
+const configLocation = path.join(base, 'ziggurat-config.json');
 
 if (!fs.existsSync(configLocation)) {
   console.error(chalk.red(`[Ziggurat] No config file found in project folder (${configLocation})`));
   process.exit(5);
 }
 
-const config = require(path.join(base, '/ziggurat-config.json'));
-config.buildOptions.project.source = path.resolve(base, config.buildOptions.project.source);
-config.buildOptions.project.destination = path.resolve(base, config.buildOptions.project.destination);
+const config = require(configLocation);
+config.buildOptions.project.source = path.join(base, config.buildOptions.project.source);
+config.buildOptions.project.destination = path.join(base, config.buildOptions.project.destination);
 
 // Gulp helper packages
 const notify       = require('gulp-notify');
@@ -82,7 +82,14 @@ let ENVIRONMENT = 'development';
 
 function createSource(location, prefix) {
   if (typeof location === 'string') {
-    return path.join(
+    let not = '';
+
+    if (location.indexOf('!') === 0) {
+      not = '!';
+      location = location.substr(1);
+    }
+
+    return not + path.join(
       prefix || config.buildOptions.project.source,
       location
     );
@@ -92,6 +99,7 @@ function createSource(location, prefix) {
 
       if (src.indexOf('!') === 0) {
         not = '!';
+        src = src.substr(1);
       }
 
       return not + path.join(
@@ -146,10 +154,10 @@ function reload(done) {
 /**
  * Clean the destination folder.
  */
-function clean(done) {
-  del(config.buildOptions.project.destination);
+function clean() {
   console.info(`[Ziggurat]: Done cleaning destination: ${config.buildOptions.project.destination}`);
-  done();
+
+  return del(config.buildOptions.project.destination);
 }
 
 /**
@@ -488,21 +496,26 @@ function serve(done) {
  * Default watch task for every relevant file for the project.
  */
 function watchTask() {
+  gulp.watch(config.buildOptions.images.jpg.concat(config.buildOptions.images.png),
+    { cwd: config.buildOptions.project.source },
+    gulp.series(imageAssetsTask, reload));
+
+  gulp.watch(config.buildOptions.otherAssets.source,
+    { cwd: config.buildOptions.project.source },
+    gulp.series(otherAssetsTask, htmlTask, reload));
+
+  gulp.watch(config.buildOptions.pages,
+    { cwd: config.buildOptions.project.source },
+    gulp.series(htmlTask, reload));
+
+  gulp.watch(config.buildOptions.scss.watch,
+    { cwd: config.buildOptions.project.source },
+    scssTask);
+
   gulp.watch(
-    createSource(config.buildOptions.images.jpg.concat(
-      config.buildOptions.images.png
-    )), gulp.series(imageAssetsTask, reload));
-
-  gulp.watch(createSource(config.buildOptions.otherAssets.source), gulp.series(otherAssetsTask, htmlTask, reload));
-
-  gulp.watch(createSource(config.buildOptions.pages), gulp.series(htmlTask, reload));
-
-  gulp.watch(createSource(config.buildOptions.scss.watch), scssTask);
-
-  gulp.watch(
-    createSource(config.buildOptions.javascript.source.concat(
-      config.buildOptions.javascript.libs
-    )), gulp.series(jsTask, reload));
+    config.buildOptions.javascript.source.concat(config.buildOptions.javascript.libs),
+    { cwd: config.buildOptions.project.source },
+    gulp.series(jsTask, reload));
 }
 
 // Default task
@@ -571,6 +584,25 @@ gulp.task('skipFavicons',
 // skipImageAssets
 gulp.task('skipImageAssets',
   gulp.series(
+    gulp.parallel(
+      otherAssetsTask,
+      htmlTask,
+      scssTask,
+      jsTask
+    ),
+
+    gulp.parallel(
+      serve,
+      watchTask
+    )
+  )
+);
+
+// Light deploy task
+gulp.task('lightDeploy',
+  gulp.series(
+    setDeployEnvironment,
+
     gulp.parallel(
       otherAssetsTask,
       htmlTask,
