@@ -27,6 +27,8 @@ class Ziggurat
   private $databaseEnabled;
   private $xmlSiteMapSchema = 'http://www.sitemaps.org/schemas/sitemap/0.9';
 
+  public $siteUrl;
+
   public $imageSizes = [
     'small' => 512,
     'medium' => 1024,
@@ -45,6 +47,8 @@ class Ziggurat
    */
   function __construct(array $options = [])
   {
+    $this->siteUrl = $this->getSiteUrl();
+
     $this->pages = [];
     $this->Parsedown = new \Parsedown();
 
@@ -71,6 +75,14 @@ class Ziggurat
     if (isset($this->options['error'])) {
       register_shutdown_function([ $this, 'shutDownHandler' ]);
     }
+  }
+
+
+  public function getSiteUrl(): string
+  {
+    $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] == 443) ? 'https://' : 'http://';
+
+    return $protocol . $_SERVER['HTTP_HOST'] . '/';
   }
 
 
