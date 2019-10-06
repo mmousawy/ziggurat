@@ -186,21 +186,8 @@ class Ziggurat
      * Sort pages
      */
     usort($this->pages, function($item1, $item2) {
-      // By order
-      if (isset($item1['properties']['order'])) {
-        if (isset($item2['properties']['order'])) {
-          return $item1['properties']['order'] <=> $item2['properties']['order'];
-        } else {
-          return false;
-        }
-      }
-
       // By path depth
-      if (!isset($item2['properties']['date']) || !isset($item1['properties']['date'])) {
-        return strcmp($item1['path'], $item2['path']);
-      }
-
-      return $item2['properties']['date'] <=> $item1['properties']['date'];
+      return strcmp($item1['path'], $item2['path']);
     });
 
     foreach ($this->pages as &$page) {
@@ -550,10 +537,6 @@ class Ziggurat
     $foundAmount = 0;
 
     foreach ($this->pages as $page) {
-      if ($foundAmount) {
-        continue;
-      }
-
       if ($isParent) {
         // Get the first level pages
         if ($path === '') {
@@ -570,8 +553,28 @@ class Ziggurat
       }
     }
 
-    if ($amount !== null) {
-      $foundAmount = count($foundPages) == $amount;
+    usort($foundPages, function($item1, $item2) {
+      // By order
+      if (isset($item1['properties']['order'])
+          && isset($item2['properties']['order'])) {
+        return $item1['properties']['order'] > $item2['properties']['order'];
+      } else if (isset($item2['properties']['order'])) {
+        return true;
+      }
+
+      // By date
+      if (isset($item1['properties']['date'])
+          && isset($item2['properties']['date'])) {
+        return $item2['properties']['date'] <=> $item1['properties']['date'];
+      } else if (isset($item2['properties']['date'])) {
+        return true;
+      }
+
+      return false;
+    });
+
+    if ($amount) {
+      $foundPages = array_slice($foundPages, 0, $amount);
     }
 
     return $foundPages;
