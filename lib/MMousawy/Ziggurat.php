@@ -13,7 +13,7 @@
 
 namespace MMousawy;
 
-require_once __DIR__ . '/../Parsedown/Parsedown.php';
+require_once dirname(__DIR__) . '/Parsedown/Parsedown.php';
 
 class Ziggurat
 {
