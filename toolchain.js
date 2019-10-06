@@ -244,6 +244,9 @@ function imageAssetsTask(done) {
   Promise.all(processes)
   .then(resolve => {
     done();
+  })
+  .catch(result => {
+    process.exit(5);
   });
 }
 
