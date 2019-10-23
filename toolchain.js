@@ -47,7 +47,6 @@ config.buildOptions.project.destination = path.join(base, config.buildOptions.pr
 // Gulp helper packages
 const notify       = require('gulp-notify');
 const cache        = require('gulp-cached');
-const rename       = require("gulp-rename");
 const gulpif       = require("gulp-if");
 const map          = require('map-stream');
 
@@ -65,11 +64,12 @@ const rollup       = require('rollup').rollup;
 const terser       = require('rollup-plugin-terser').terser;
 
 // Image packages
-const sharp        = require('sharp');
-const pngToJpeg    = require('png-to-jpeg');
-const imagemin     = require('imagemin');
-const pngQuant     = require('imagemin-pngquant');
-const favicons     = require('gulp-favicons');
+const sharp            = require('sharp');
+const imagemin         = require('imagemin');
+const imageminMozJpeg  = require('imagemin-mozjpeg');
+const imageminPngQuant = require('imagemin-pngquant');
+const imageminWebp     = require('imagemin-webp');
+const favicons         = require('gulp-favicons');
 
 // Development server packages
 const connect      = require('gulp-connect-php');
@@ -126,7 +126,7 @@ function createSource(location, prefix) {
  *  npm run ziggurat skipFavicons
  *    Clean, build but skip favicons generation and watch for changes for all files.
  *
- *  npm run ziggurat skipImageAssets
+ *  npm run ziggurat skipImages
  *    Don't clean, build but skip generating images, watch for all files.
  */
 
@@ -154,107 +154,85 @@ function reload(done) {
 /**
  * Clean the destination folder.
  */
-function clean() {
-  console.info(`[Ziggurat]: Done cleaning destination: ${config.buildOptions.project.destination}`);
+async function clean() {
+  console.info(chalk.cyan(`[Ziggurat] Done cleaning destination: ${config.buildOptions.project.destination}`));
 
-  return del(config.buildOptions.project.destination);
+  await del(config.buildOptions.project.destination);
+  await fs.mkdirSync(config.buildOptions.project.destination);
+
+  return;
 }
 
 /**
- * Process single image type in a single size.
- *
- * @param {string} type The type of image (jpg/png)
- * @param {int} size What size it should be
- */
-function processImage(type, size) {
-  return new Promise((resolve, reject) => {
-    // Go through each glob depending on the type
-    let imagesCount = 0;
-
-    gulp.src(createSource(config.buildOptions.images[type]),
-      { base: config.buildOptions.project.source })
-    .pipe(cache(`assets-${type}-${size}`, { optimizeMemory: true }))
-    .pipe(
-      map(async (file, cb) => {
-        imagesCount++;
-
-        await sharp(file.contents)
-        .resize({
-          width: size,
-          withoutEnlargement: true
-        })
-        .png()
-        .toBuffer()
-        .then(data => {
-          file.contents = data;
-          cb(null, file);
-        });
-      })
-    )
-    .pipe(map(async (file, cb) => {
-      const whichPlugin = {
-        jpg: pngToJpeg({
-          quality: 75
-        }),
-        png: pngQuant({
-          speed: 1,
-          strip: true,
-          dithering: 1,
-          quality: [.5, 1]
-        })
-      };
-
-      file.contents = await imagemin.buffer(file.contents,
-        {
-          optimize: true,
-          grayscale: true,
-          progressive: true,
-          plugins: [
-            whichPlugin[type]
-          ]
-        }
-      );
-
-      cb(null, file);
-    }))
-    .pipe(rename({
-      suffix: `-${size}px`,
-      extname: `.${type}`
-    }))
-    .pipe(gulp.dest(config.buildOptions.project.destination))
-    .on('end', () => {
-      console.info(`[Ziggurat]: Done processing ${imagesCount} ${type} images in ${size}px`);
-      return resolve();
-    });
-  });
-}
-
-/**
- * Process all images asynchronously.
+ * Process all images: resize and compress.
  *
  * @param {function} done
  */
-function imageAssetsTask(done) {
-  console.info(`[Ziggurat]: Starting image processing...`);
+function imagesTask() {
+  console.info(chalk.cyan(`[Ziggurat] Processing images...`));
 
-  const imageSizes = config.buildOptions.images.sizes;
+  const whichPlugin = {
+    jpg: imageminMozJpeg,
+    png: imageminPngQuant,
+    webp: imageminWebp
+  };
 
-  const processes = [];
+  let finishedTypes = 0;
+  let totalTypes = Object.entries(config.buildOptions.images).length;
 
-  Object.keys(imageSizes).forEach(type => {
-    const sizes = imageSizes[type];
+  return new Promise(resolve => {
+    Object.entries(config.buildOptions.images).forEach(([type, typeObject]) => {
+      gulp.src(typeObject.source, {
+        cwd: config.buildOptions.project.source
+      })
+      .pipe(cache(`assets-${type}`, { optimizeMemory: true }))
+      .pipe(map(
+        async (file, cb) => {
+          const promises = typeObject.sizes.map(size => new Promise(resolve => {
+            sharp(file.contents)
+            .resize({
+              width: size,
+              withoutEnlargement: true
+            })
+            .toBuffer()
+            .then(async data => {
+              if (type === 'jpg') {
+                data = await sharp(data).jpeg().toBuffer();
+              }
 
-    sizes.forEach(size => {
-      processes.push(processImage(type, size));
+              data = await imagemin.buffer(data,
+                {
+                  plugins: [
+                    whichPlugin[type](config.buildOptions.images[type].options)
+                  ]
+                }
+              );
+
+              const relativePath = path.dirname(file.path.replace(path.resolve(config.buildOptions.project.source), ''));
+              const fileNameNoExt = path.basename(file.path, path.extname(file.path));
+              const fileName = `${fileNameNoExt}-${size}px.${type}`;
+
+              fs.mkdirSync(path.resolve(path.join(config.buildOptions.project.destination, relativePath)), { recursive: true });
+
+              await fs.writeFile(path.resolve(path.join(config.buildOptions.project.destination, relativePath, fileName)), data, () => {
+                resolve();
+              });
+            });
+          }))
+
+          await Promise.all(promises);
+
+          cb(null);
+        }
+      ))
+      .on('end', () => {
+        finishedTypes++;
+
+        if (finishedTypes === totalTypes) {
+          resolve();
+        }
+      })
     });
-  });
-
-  Promise.all(processes)
-  .then(resolve => {
-    done();
-  })
-  .catch(result => {
-    process.exit(5);
   });
 }
 
@@ -304,6 +282,8 @@ function htmlTask() {
  * Compile CSS to SCSS and compress
  */
 function scssTask() {
+  console.info(chalk.cyan(`[Ziggurat] Compiling SCSS...`));
+
   return gulp.src(
     createSource(config.buildOptions.scss.source),
     { base: createSource(config.buildOptions.scss.base), allowEmpty: true })
@@ -442,6 +422,8 @@ function inlineSvgCSS(file, cb) {
  * Move javascript libraries to destination.
  */
 function jsTask() {
+  console.info(chalk.cyan(`[Ziggurat] Compiling JS...`));
+
   return rollup({
     input: createSource(config.buildOptions.javascript.source),
     plugins: [ terser() ]
@@ -496,9 +478,9 @@ function serve(done) {
  * Default watch task for every relevant file for the project.
  */
 function watchTask() {
-  gulp.watch(config.buildOptions.images.jpg.concat(config.buildOptions.images.png),
+  gulp.watch(config.buildOptions.images.jpg.source.concat(config.buildOptions.images.png.source),
     { cwd: config.buildOptions.project.source },
-    gulp.series(imageAssetsTask, reload));
+    gulp.series(imagesTask, reload));
 
   gulp.watch(config.buildOptions.otherAssets.source,
     { cwd: config.buildOptions.project.source },
@@ -512,6 +494,8 @@ function watchTask() {
     { cwd: config.buildOptions.project.source },
     scssTask);
 
+  console.log(config.buildOptions.javascript.source.concat(config.buildOptions.javascript.libs));
+
   gulp.watch(
     config.buildOptions.javascript.source.concat(config.buildOptions.javascript.libs),
     { cwd: config.buildOptions.project.source },
@@ -523,7 +507,7 @@ gulp.task('default',
   gulp.series(
     clean,
     faviconTask,
-    imageAssetsTask,
+    imagesTask,
 
     gulp.parallel(
       otherAssetsTask,
@@ -545,7 +529,7 @@ gulp.task('deploy',
     setDeployEnvironment,
     clean,
     faviconTask,
-    imageAssetsTask,
+    imagesTask,
 
     gulp.parallel(
       otherAssetsTask,
@@ -565,7 +549,7 @@ gulp.task('deploy',
 gulp.task('skipFavicons',
   gulp.series(
     clean,
-    imageAssetsTask,
+    imagesTask,
 
     gulp.parallel(
       otherAssetsTask,
@@ -581,8 +565,8 @@ gulp.task('skipFavicons',
   )
 );
 
-// skipImageAssets
-gulp.task('skipImageAssets',
+// skipImages
+gulp.task('skipImages',
   gulp.series(
     gulp.parallel(
       otherAssetsTask,

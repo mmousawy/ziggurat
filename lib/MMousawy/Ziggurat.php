@@ -169,7 +169,8 @@ class Ziggurat
         if ($match[1] === 'ignore' && !isset($match[3])) {
           $page['properties'][$match[1]] = 'true';
 
-        } else if ($match[1] === 'cover-image' && isset($match[3])) {
+        } else if (($match[1] === 'cover-image' && isset($match[3]))
+                   || ($match[1] === 'cover-image-webp' && isset($match[3]))) {
           $page['properties'][$match[1]] = [];
 
           if (strpos($match[3], '{$size}')) {
