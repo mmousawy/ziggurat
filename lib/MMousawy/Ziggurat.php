@@ -55,7 +55,7 @@ class Ziggurat
     $this->options = [
       'base_dir' => getcwd(),
       'pages_dir' => './pages',
-      'template' => './template',
+      'templateDir' => './template',
       'enable_cache' => false,
       'minify_html' => false
     ];
@@ -427,9 +427,9 @@ class Ziggurat
                             ? $page['properties']['template']
                             : $templatePart;
 
-          include $bodyTemplate;
+          include $this->options['templateDir'] . '/' . $bodyTemplate . '.php';
         } else {
-          include $templatePart;
+          include $this->options['templateDir'] . '/' . $templatePart . '.php';
         }
       }
 
@@ -473,9 +473,9 @@ class Ziggurat
   {
     if (is_string($template)) {
       $this->options['template'] = [
-        'header' => $template . '/header.php',
-        'body'   => $template . '/body.php',
-        'footer' => $template . '/footer.php'
+        'header' => 'header',
+        'body'   => 'body',
+        'footer' => 'footer'
       ];
     } else if (is_array($template)) {
       if ($template['header'] && $template['body'] && $template['footer']) {
