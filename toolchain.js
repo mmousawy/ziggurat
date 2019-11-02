@@ -65,10 +65,6 @@ const terser       = require('rollup-plugin-terser').terser;
 
 // Image packages
 const sharp            = require('sharp');
-const imagemin         = require('imagemin');
-const imageminMozJpeg  = require('imagemin-mozjpeg');
-const imageminPngQuant = require('imagemin-pngquant');
-const imageminWebp     = require('imagemin-webp');
 const favicons         = require('gulp-favicons');
 
 // Development server packages
@@ -171,12 +167,6 @@ async function clean() {
 function imagesTask() {
   console.info(chalk.cyan(`[Ziggurat] Processing images...`));
 
-  const whichPlugin = {
-    jpg: imageminMozJpeg,
-    png: imageminPngQuant,
-    webp: imageminWebp
-  };
-
   let finishedTypes = 0;
   let totalTypes = Object.entries(config.buildOptions.images).length;
 
@@ -188,37 +178,30 @@ function imagesTask() {
       .pipe(cache(`assets-${type}`, { optimizeMemory: true }))
       .pipe(map(
         async (file, cb) => {
+          const relativePath = path.dirname(file.path.replace(path.resolve(config.buildOptions.project.source), ''));
+          const fileNameNoExt = path.basename(file.path, path.extname(file.path));
+
           const promises = typeObject.sizes.map(size => new Promise(resolve => {
+            const typeExt = {
+              jpeg: 'jpg',
+              png: 'png',
+              webp: 'webp'
+            };
+
+            const fileName = `${fileNameNoExt}-${size}px.${typeExt[type]}`;
+
+            fs.mkdirSync(path.resolve(path.join(config.buildOptions.project.destination, relativePath)), { recursive: true });
+
             sharp(file.contents)
             .resize({
               width: size,
               withoutEnlargement: true
             })
-            .toBuffer()
-            .then(async data => {
-              if (type === 'jpg') {
-                data = await sharp(data).jpeg().toBuffer();
-              }
-
-              data = await imagemin.buffer(data,
-                {
-                  plugins: [
-                    whichPlugin[type](config.buildOptions.images[type].options)
-                  ]
-                }
-              );
-
-              const relativePath = path.dirname(file.path.replace(path.resolve(config.buildOptions.project.source), ''));
-              const fileNameNoExt = path.basename(file.path, path.extname(file.path));
-              const fileName = `${fileNameNoExt}-${size}px.${type}`;
-
-              fs.mkdirSync(path.resolve(path.join(config.buildOptions.project.destination, relativePath)), { recursive: true });
-
-              await fs.writeFile(path.resolve(path.join(config.buildOptions.project.destination, relativePath, fileName)), data, () => {
-                resolve();
-              });
+            [type]()
+            .toFile(path.resolve(path.join(config.buildOptions.project.destination, relativePath, fileName)), () => {
+              resolve();
             });
-          }))
+          }));
 
           await Promise.all(promises);
 
@@ -478,7 +461,7 @@ function serve(done) {
  * Default watch task for every relevant file for the project.
  */
 function watchTask() {
-  gulp.watch(config.buildOptions.images.jpg.source.concat(config.buildOptions.images.png.source),
+  gulp.watch(config.buildOptions.images.jpeg.source.concat(config.buildOptions.images.png.source),
     { cwd: config.buildOptions.project.source },
     gulp.series(imagesTask, reload));
 
