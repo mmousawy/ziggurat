@@ -26,6 +26,7 @@ class Ziggurat
   private $db;
   private $databaseEnabled;
   private $xmlSiteMapSchema = 'http://www.sitemaps.org/schemas/sitemap/0.9';
+  private $avgWordsPerMinute = 175;
 
   public $siteUrl;
 
@@ -156,6 +157,18 @@ class Ziggurat
       $page['path'] = $file[0];
 
       $fileContents = file_get_contents($page['path']);
+
+      /**
+       * Get page character count, words count and page read time based on avg. wpm.
+       */
+      $plainText = trim(preg_replace(['/\s+/', '/(\#|`|_)/'], [' ', ''], strip_tags($fileContents)));
+      $page['properties']['characters'] = strlen($plainText);
+      $page['properties']['words'] = str_word_count($plainText);
+      $page['properties']['avg_time'] = $page['properties']['words'] / $this->avgWordsPerMinute;
+
+      if (isset($_GET['debug'])) {
+        var_dump($page['path'], strip_tags($fileContents));
+      }
 
       /**
        * Read out file metadata
@@ -340,7 +353,6 @@ class Ziggurat
       header('HTTP/1.1 404 Not Found');
       $page = $this->searchPage('404');
     }
-
 
     // Make reference to Ziggurat available for resolved pages
     $Ziggurat = $this;
