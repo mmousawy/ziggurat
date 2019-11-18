@@ -258,7 +258,25 @@ function faviconTask() {
 function htmlTask() {
   return gulp.src(createSource(config.buildOptions.pages), { base: config.buildOptions.project.source })
   .pipe(map(inlineSvgHTML()))
+  .pipe(map(replaceVariables()))
   .pipe(gulp.dest(config.buildOptions.project.destination));
+}
+
+/**
+ * Replace variables in HTML.
+ *
+ * @param {*} file
+ * @param {function} cb
+ */
+function replaceVariables(file, cb) {
+  return async (file, cb) => {
+    let fileContents = file.contents.toString('utf8');
+
+    fileContents = fileContents.replace('%__VERSION__%', Math.round((new Date()).getTime() / 1000));
+
+    file.contents = Buffer.from(fileContents);
+    return cb(null, file);
+  }
 }
 
 /**
