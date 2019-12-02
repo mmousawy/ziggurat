@@ -17,6 +17,7 @@ const del          = require('del');
 const path         = require('path');
 const argv         = require('yargs').argv;
 const chalk        = require('chalk');
+const execFile     = require('child_process').execFile;
 
 // ASCII flair
 console.log(chalk.hex('#9B4E55').bold(`      _                         __
@@ -48,6 +49,7 @@ config.buildOptions.project.destination = path.join(base, config.buildOptions.pr
 const notify       = require('gulp-notify');
 const cache        = require('gulp-cached');
 const gulpif       = require("gulp-if");
+const rename       = require('gulp-rename');
 const map          = require('map-stream');
 
 // SVG packages
@@ -64,8 +66,9 @@ const rollup       = require('rollup').rollup;
 const terser       = require('rollup-plugin-terser').terser;
 
 // Image packages
-const sharp            = require('sharp');
-const favicons         = require('gulp-favicons');
+const sharp        = require('sharp');
+const pngquant     = require('pngquant-bin');
+const favicons     = require('gulp-favicons');
 
 // Development server packages
 const connect      = require('gulp-connect-php');
@@ -76,16 +79,15 @@ const SVGO = require('svgo');
 const svgo = new SVGO(config.svgo || {});
 let ENVIRONMENT = 'development';
 
+/**
+ * Create resolved source paths from config.
+ *
+ * @param {string|array} location
+ * @param {string} prefix
+ */
 function createSource(location, prefix) {
   if (typeof location === 'string') {
-    let not = '';
-
-    if (location.indexOf('!') === 0) {
-      not = '!';
-      location = location.substr(1);
-    }
-
-    return not + path.join(
+    return path.join(
       prefix || config.buildOptions.project.source,
       location
     );
@@ -111,19 +113,66 @@ function createSource(location, prefix) {
 }
 
 /**
+ * Create concatenated source paths from config.
+ *
+ * @param {string|array} location
+ * @param {string} prefix
+ */
+function concatSource(location, prefix) {
+  if (typeof location === 'string') {
+    let not = '';
+
+    if (location.indexOf('!') === 0) {
+      not = '!';
+      location = location.substr(1);
+    }
+
+    return `${not}${prefix || config.buildOptions.project.source}/${location}`;
+
+  } else if (location instanceof Array) {
+    return location.map(src => {
+      let not = '';
+
+      if (src.indexOf('!') === 0) {
+        not = '!';
+        src = src.substr(1);
+      }
+
+      return `${not}${prefix || config.buildOptions.project.source}/${src}`;
+    });
+  }
+
+  console.error(chalk.red(`[Ziggurat] Could not join source for: ${location}`));
+
+  return false;
+}
+
+/**
  * This file contains all the individual tasks for the following gulp tasks:
  *
- *  npm run ziggurat [default]
- *    Clean, build and watch for changes for all files.
+ *  npm run watch [default]
+ *    Clean, build and watch for changes.
  *
- *  npm run ziggurat deploy
- *    Clean, build for deployment (no sourcemaps) and watch for changes for all files.
+ *  npm run watch:skipImages
+ *    Don't clean, build but skip image optimization and watch for changes.
  *
- *  npm run ziggurat skipFavicons
- *    Clean, build but skip favicons generation and watch for changes for all files.
+ *  npm run watch:production
+ *    Clean, build for production (no sourcemaps, optimize images) and watch for changes.
  *
- *  npm run ziggurat skipImages
- *    Don't clean, build but skip generating images, watch for all files.
+ *  npm run watch:production:skipImages
+ *    Don't clean, build for production but skip image optimization and watch for changes.
+ *
+ *  npm run build [default]
+ *    Clean, build.
+ *
+ *  npm run build:skipImages
+ *    Don't clean, build but skip image optimization.
+ *
+ *  npm run build:production
+ *    Clean, build for production (no sourcemaps, optimize images).
+ *
+ *  npm run build:production:skipImages
+ *    Don't clean, build for production but skip image optimization.
  */
 
 /**
@@ -131,8 +180,9 @@ function createSource(location, prefix) {
  *
  * @param {string} env
  */
-function setDeployEnvironment(done) {
-  ENVIRONMENT = 'deploy';
+function setProductionEnvironment(done) {
+  console.info(chalk.cyan(`[Ziggurat] Setting environment to PRODUCTION`));
+  ENVIRONMENT = 'production';
 
   done();
 }
@@ -150,11 +200,11 @@ function reload(done) {
 /**
  * Clean the destination folder.
  */
-async function clean() {
-  console.info(chalk.cyan(`[Ziggurat] Done cleaning destination: ${config.buildOptions.project.destination}`));
-
+async function cleanTask() {
   await del(config.buildOptions.project.destination);
   await fs.mkdirSync(config.buildOptions.project.destination);
+
+  console.info(chalk.cyan(`[Ziggurat] Done cleaning destination: ${config.buildOptions.project.destination}`));
 
   return;
 }
@@ -164,58 +214,79 @@ async function clean() {
  *
  * @param {function} done
  */
-function imagesTask() {
+async function imageAssetsTask(done) {
   console.info(chalk.cyan(`[Ziggurat] Processing images...`));
 
-  let finishedTypes = 0;
-  let totalTypes = Object.entries(config.buildOptions.images).length;
+  const extName = {
+    jpeg: 'jpg',
+    png: 'png',
+    webp: 'webp'
+  };
 
-  return new Promise(resolve => {
-    Object.entries(config.buildOptions.images).forEach(([type, typeObject]) => {
-      gulp.src(typeObject.source, {
-        cwd: config.buildOptions.project.source
-      })
-      .pipe(cache(`assets-${type}`, { optimizeMemory: true }))
-      .pipe(map(
-        async (file, cb) => {
-          const relativePath = path.dirname(file.path.replace(path.resolve(config.buildOptions.project.source), ''));
-          const fileNameNoExt = path.basename(file.path, path.extname(file.path));
+  await config.buildOptions.images.forEach(imageSrcObject => {
+    gulp.src(concatSource(imageSrcObject.source), {
+      base: config.buildOptions.project.source,
+      allowEmpty: true
+    })
 
-          const promises = typeObject.sizes.map(size => new Promise(resolve => {
-            const typeExt = {
-              jpeg: 'jpg',
-              png: 'png',
-              webp: 'webp'
-            };
+    .pipe(map(
+      async (file, cb) => {
+        const relativePath = path.dirname(file.path.replace(path.resolve(config.buildOptions.project.source), ''));
+        const fileExt = path.extname(file.path);
+        let fileNameNoExt = path.basename(file.path, fileExt);
 
-            const fileName = `${fileNameNoExt}-${size}px.${typeExt[type]}`;
+        fs.mkdirSync(path.resolve(path.join(config.buildOptions.project.destination, relativePath)), { recursive: true });
 
-            fs.mkdirSync(path.resolve(path.join(config.buildOptions.project.destination, relativePath)), { recursive: true });
+        const sharpImage = sharp(file.contents);
 
-            sharp(file.contents)
-            .resize({
-              width: size,
-              withoutEnlargement: true
-            })
-            [type]()
-            .toFile(path.resolve(path.join(config.buildOptions.project.destination, relativePath, fileName)), () => {
-              resolve();
+        // For each size
+        const promises = imageSrcObject.sizes.map(async size => new Promise(resolve => {
+
+          let sharpImageEdited = sharpImage
+          .resize({
+            width: size,
+            withoutEnlargement: true
+          });
+
+          // For each type
+          Promise.all(Object.entries(imageSrcObject.types).map(([imageType, imageOptions]) => {
+            // Remove underscore prefix for images being converted to another image format
+            if (fileNameNoExt.charAt(0) === '_' && fileExt !== extName[imageType]) {
+              fileNameNoExt = fileNameNoExt.substr(1);
+            }
+
+            const fileName = `${fileNameNoExt}-${size}px.${extName[imageType]}`;
+            const outputFilePath = path.resolve(path.join(config.buildOptions.project.destination, relativePath, fileName));
+
+            return new Promise(async (resolve, reject) => {
+              sharpImageEdited
+              [imageType](imageOptions || {})
+              .toFile(outputFilePath, () => {
+                if (ENVIRONMENT === 'production' && imageType === 'png') {
+                  execFile(pngquant, [
+                    '--quality', `${imageOptions.quality[0]}-${imageOptions.quality[1]}`,
+                    '--skip-if-larger',
+                    '--verbose',
+                    '-f',
+                    '-o', outputFilePath,
+                    outputFilePath
+                  ], (err) => {
+                    resolve();
+                  });
+                } else {
+                  resolve();
+                }
+              });
             });
-          }));
+          }))
+          .then(() => resolve());
+        }));
 
-          await Promise.all(promises);
+        await Promise.all(promises);
 
-          cb(null);
-        }
-      ))
-      .on('end', () => {
-        finishedTypes++;
-
-        if (finishedTypes === totalTypes) {
-          resolve();
-        }
-      })
-    });
+        cb(null);
+      }
+    ));
   });
 }
 
@@ -223,6 +294,8 @@ function imagesTask() {
  * Move all other assets.
  */
 function otherAssetsTask() {
+  console.info(chalk.cyan(`[Ziggurat] Copying other assets...`));
+
   const source = createSource(config.buildOptions.otherAssets.source);
 
   return gulp.src(source, {
@@ -237,6 +310,8 @@ function otherAssetsTask() {
  * Generate favicons and move them to destination.
  */
 function faviconTask() {
+  console.info(chalk.cyan(`[Ziggurat] Starting favicon task...`));
+
   return gulp.src(
     createSource(config.buildOptions.favicons.source),
     { base: config.buildOptions.project.source,
@@ -479,9 +554,13 @@ function serve(done) {
  * Default watch task for every relevant file for the project.
  */
 function watchTask() {
-  gulp.watch(config.buildOptions.images.jpeg.source.concat(config.buildOptions.images.png.source),
+  let imgSources = [];
+
+  config.buildOptions.images.forEach(imageSrcObject => imgSources = imgSources.concat(imageSrcObject.source));
+
+  gulp.watch(imgSources,
     { cwd: config.buildOptions.project.source },
-    gulp.series(imagesTask, reload));
+    gulp.series(imageAssetsTask, reload));
 
   gulp.watch(config.buildOptions.otherAssets.source,
     { cwd: config.buildOptions.project.source },
@@ -495,23 +574,22 @@ function watchTask() {
     { cwd: config.buildOptions.project.source },
     scssTask);
 
-  console.log(config.buildOptions.javascript.source.concat(config.buildOptions.javascript.libs));
-
   gulp.watch(
     config.buildOptions.javascript.source.concat(config.buildOptions.javascript.libs),
     { cwd: config.buildOptions.project.source },
     gulp.series(jsTask, reload));
 }
 
-// Default task
-gulp.task('default',
+/**
+ * watch task
+ */
+gulp.task('watch',
   gulp.series(
-    clean,
-    faviconTask,
-    imagesTask,
+    cleanTask,
+    otherAssetsTask,
+    imageAssetsTask,
 
     gulp.parallel(
-      otherAssetsTask,
       htmlTask,
       scssTask,
       jsTask
@@ -524,16 +602,17 @@ gulp.task('default',
   )
 );
 
-// Deploy task
-gulp.task('deploy',
+/**
+ * watch:production task
+ */
+gulp.task('watch:production',
   gulp.series(
-    setDeployEnvironment,
-    clean,
-    faviconTask,
-    imagesTask,
+    setProductionEnvironment,
+    cleanTask,
+    otherAssetsTask,
+    imageAssetsTask,
 
     gulp.parallel(
-      otherAssetsTask,
       htmlTask,
       scssTask,
       jsTask
@@ -546,14 +625,15 @@ gulp.task('deploy',
   )
 );
 
-// skipFavicons
-gulp.task('skipFavicons',
+/**
+ * watch:skipImages task
+ */
+gulp.task('watch:skipImages',
   gulp.series(
-    clean,
-    imagesTask,
+    cleanTask,
+    otherAssetsTask,
 
     gulp.parallel(
-      otherAssetsTask,
       htmlTask,
       scssTask,
       jsTask
@@ -566,11 +646,16 @@ gulp.task('skipFavicons',
   )
 );
 
-// skipImages
-gulp.task('skipImages',
+/**
+ * watch:production:skipImages task
+ */
+gulp.task('watch:production:skipImages',
   gulp.series(
+    setProductionEnvironment,
+    cleanTask,
+    otherAssetsTask,
+
     gulp.parallel(
-      otherAssetsTask,
       htmlTask,
       scssTask,
       jsTask
@@ -583,21 +668,70 @@ gulp.task('skipImages',
   )
 );
 
-// Light deploy task
-gulp.task('lightDeploy',
+/**
+ * build task
+ */
+gulp.task('build',
   gulp.series(
-    setDeployEnvironment,
+    cleanTask,
+    otherAssetsTask,
+    imageAssetsTask,
 
     gulp.parallel(
-      otherAssetsTask,
       htmlTask,
       scssTask,
       jsTask
-    ),
+    )
+  )
+);
+
+/**
+ * build:production task
+ */
+gulp.task('build:production',
+  gulp.series(
+    setProductionEnvironment,
+    cleanTask,
+    otherAssetsTask,
+    imageAssetsTask,
 
     gulp.parallel(
-      serve,
-      watchTask
+      htmlTask,
+      scssTask,
+      jsTask
+    )
+  )
+);
+
+/**
+ * build:skipImages task
+ */
+gulp.task('build:skipImages',
+  gulp.series(
+    cleanTask,
+    otherAssetsTask,
+
+    gulp.parallel(
+      htmlTask,
+      scssTask,
+      jsTask
+    )
+  )
+);
+
+/**
+ * build:production:skipImages task
+ */
+gulp.task('build:production:skipImages',
+  gulp.series(
+    setProductionEnvironment,
+    cleanTask,
+    otherAssetsTask,
+
+    gulp.parallel(
+      htmlTask,
+      scssTask,
+      jsTask
     )
   )
 );

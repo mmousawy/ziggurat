@@ -29,6 +29,7 @@
     "gulp-favicons": "^2.3.1",
     "gulp-if": "^3.0.0",
     "gulp-notify": "^3.2.0",
+    "gulp-rename": "^1.4.0",
     "gulp-sass": "^4.0.2",
     "gulp-sourcemaps": "^2.6.5",
     "imagemin": "^7.0.0",
@@ -37,6 +38,7 @@
     "imagemin-webp": "^5.1.0",
     "map-stream": "0.0.7",
     "path": "^0.12.7",
+    "pngquant-bin": "^5.0.2",
     "querystring": "^0.2.0",
     "rollup": "^1.24.0",
     "rollup-plugin-terser": "^5.1.2",
@@ -45,8 +47,14 @@
     "yargs": "^14.2.0"
   },
   "scripts": {
-    "ziggurat": "node ziggurat.js",
-    "ziggurat-debug": "node ziggurat.js --debug 1"
+    "watch": "gulp --gulpfile toolchain.js watch --silent",
+    "watch:skipImages": "gulp --gulpfile toolchain.js watch:skipImages --silent",
+    "watch:production": "gulp --gulpfile toolchain.js watch:production --silent",
+    "watch:production:skipImages": "gulp --gulpfile toolchain.js watch:production:skipImages --silent",
+    "build": "gulp --gulpfile toolchain.js build --silent",
+    "build:skipImages": "gulp --gulpfile toolchain.js build:skipImages --silent",
+    "build:production": "gulp --gulpfile toolchain.js build:production --silent",
+    "build:production:skipImages": "gulp --gulpfile toolchain.js build:production:skipImages --silent"
   },
   "dependencies": {}
 }

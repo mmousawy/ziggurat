@@ -188,16 +188,20 @@ class Ziggurat
 
           if (strpos($match[3], '{$size}')) {
             $coverImage = explode('{$size}', $match[3]);
-          }
 
-          foreach ($this->imageSizes as $label => $pixels) {
-            $imageUrl = [
-              'url' => "{$coverImage[0]}-{$pixels}px{$coverImage[1]}",
-              'size' => $pixels
-            ];
+            foreach ($this->imageSizes as $label => $pixels) {
+              $imageUrl = [
+                'url' => "{$coverImage[0]}-{$pixels}px{$coverImage[1]}",
+                'size' => $pixels
+              ];
 
-            if (file_exists($imageUrl['url'])) {
-              $page['properties'][$match[1]][$label] = $imageUrl;
+              if (file_exists($imageUrl['url'])) {
+                $page['properties'][$match[1]][$label] = $imageUrl;
+              }
+            }
+          } else {
+            if (file_exists($match[3])) {
+              $page['properties'][$match[1]]['url'] = $match[3];
             }
           }
         } else if (isset($match[3])) {
