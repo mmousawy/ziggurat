@@ -611,6 +611,7 @@ gulp.task('watch:production',
     cleanTask,
     otherAssetsTask,
     imageAssetsTask,
+    faviconTask,
 
     gulp.parallel(
       htmlTask,
@@ -694,6 +695,7 @@ gulp.task('build:production',
     cleanTask,
     otherAssetsTask,
     imageAssetsTask,
+    faviconTask,
 
     gulp.parallel(
       htmlTask,
