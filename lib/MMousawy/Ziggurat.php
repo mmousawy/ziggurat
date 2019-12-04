@@ -186,6 +186,7 @@ class Ziggurat
                    || ($match[1] === 'cover-image-webp' && isset($match[3]))) {
           $page['properties'][$match[1]] = [];
 
+          // If there are multiple sizes
           if (strpos($match[3], '{$size}')) {
             $coverImage = explode('{$size}', $match[3]);
 
@@ -200,6 +201,7 @@ class Ziggurat
               }
             }
           } else {
+            // Only one size
             if (file_exists($match[3])) {
               $page['properties'][$match[1]]['url'] = $match[3];
             }
