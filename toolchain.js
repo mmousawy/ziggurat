@@ -229,6 +229,8 @@ async function imageAssetsTask(done) {
       allowEmpty: true
     })
 
+    .pipe(cache('assets-images', { optimizeMemory: true }))
+
     .pipe(map(
       async (file, cb) => {
         const relativePath = path.dirname(file.path.replace(path.resolve(config.buildOptions.project.source), ''));
