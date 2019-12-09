@@ -18,6 +18,8 @@ const path         = require('path');
 const argv         = require('yargs').argv;
 const chalk        = require('chalk');
 const execFile     = require('child_process').execFile;
+const readline     = require('readline');
+const through2     = require('through2');
 
 // ASCII flair
 console.log(chalk.hex('#9B4E55').bold(`      _                         __
@@ -78,6 +80,16 @@ const browserSync  = require('browser-sync').create();
 const SVGO = require('svgo');
 const svgo = new SVGO(config.svgo || {});
 let ENVIRONMENT = 'development';
+
+/**
+ * Helper function to log progress.
+ * @param {*} progress
+ */
+function printProgress(progress, text){
+  readline.clearLine(process.stdout, 0);
+  readline.cursorTo(process.stdout, 0, null);
+  process.stdout.write(`${parseFloat(progress).toFixed(2)}% - ${text}`);
+}
 
 /**
  * Create resolved source paths from config.
@@ -217,79 +229,129 @@ async function cleanTask() {
 async function imageAssetsTask(done) {
   console.info(chalk.cyan(`[Ziggurat] Processing images...`));
 
+  let imageCount = 0;
+  let imageIndex = 0;
+
+  // Count all files
+  await Promise.all(config.buildOptions.images.map(imageSrcObject => {
+    return new Promise(resolve => {
+      gulp.src(concatSource(imageSrcObject.source), {
+        base: config.buildOptions.project.source,
+        allowEmpty: true
+      })
+      .pipe(through2.obj((file, enc, cb) => {
+        imageCount++;
+
+        cb();
+      },
+      // Flush
+      (cb) => {
+        resolve();
+        cb();
+      }))
+    });
+  }));
+
+  await Promise.all(config.buildOptions.images.map(imageSrcObject =>
+    new Promise(resolve => {
+      gulp.src(concatSource(imageSrcObject.source), {
+        base: config.buildOptions.project.source,
+        allowEmpty: true
+      })
+      .pipe(cache('assets-images', { optimizeMemory: true }))
+      .pipe(map(async (file, cb) => {
+        printProgress((imageIndex / imageCount) * 100, `Processing image ${(imageIndex + 1)}/${imageCount} [${path.relative(config.buildOptions.project.source, file.path)}]`);
+
+        await processImage(file, imageSrcObject);
+
+        imageIndex++;
+
+        cb();
+      }))
+      .on('end', () => {
+        resolve();
+      });
+    })
+  ));
+
+  printProgress(100, `Done processing ${imageCount} images!\n`);
+
+  return done();
+}
+
+async function processImage(file, imageSrcObject) {
   const extName = {
-    jpeg: 'jpg',
-    png: 'png',
-    webp: 'webp'
+    jpeg: '.jpg',
+    png: '.png',
+    webp: '.webp'
   };
 
-  await config.buildOptions.images.forEach(imageSrcObject => {
-    gulp.src(concatSource(imageSrcObject.source), {
-      base: config.buildOptions.project.source,
-      allowEmpty: true
-    })
+  const relativePath = path.dirname(file.path.replace(path.resolve(config.buildOptions.project.source), ''));
+  const fileExt = path.extname(file.path);
+  const fileNameNoExt = path.basename(file.path, fileExt);
 
-    .pipe(cache('assets-images', { optimizeMemory: true }))
+  // Make dir if it doesn't exit
+  fs.mkdirSync(path.resolve(path.join(config.buildOptions.project.destination, relativePath)), { recursive: true });
 
-    .pipe(map(
-      async (file, cb) => {
-        const relativePath = path.dirname(file.path.replace(path.resolve(config.buildOptions.project.source), ''));
-        const fileExt = path.extname(file.path);
-        let fileNameNoExt = path.basename(file.path, fileExt);
+  // Load the image in a Sharp instance
+  const sharpImage = sharp(file.contents);
 
-        fs.mkdirSync(path.resolve(path.join(config.buildOptions.project.destination, relativePath)), { recursive: true });
+  // For each size
+  const sizePromises = imageSrcObject.sizes.map(size =>
+    new Promise(resolveSize => {
 
-        const sharpImage = sharp(file.contents);
+      // Resize image
+      const sharpImageResized = sharpImage
+      .resize({
+        width: size,
+        withoutEnlargement: true
+      });
 
-        // For each size
-        const promises = imageSrcObject.sizes.map(async size => new Promise(resolve => {
+      // Now convert and save each resized image for each image type (size x type)
+      const typePromises = Object.entries(imageSrcObject.types).map(([imageType, imageOptions]) =>
+        new Promise(resolveFormat => {
+          let newFileName = fileNameNoExt;
 
-          let sharpImageEdited = sharpImage
-          .resize({
-            width: size,
-            withoutEnlargement: true
-          });
+          // Remove underscore prefix for images being converted to another image format
+          if (newFileName.charAt(0) === '_' && fileExt !== extName[imageType]) {
+            newFileName = newFileName.substr(1);
+          }
 
-          // For each type
-          Promise.all(Object.entries(imageSrcObject.types).map(([imageType, imageOptions]) => {
-            // Remove underscore prefix for images being converted to another image format
-            if (fileNameNoExt.charAt(0) === '_' && fileExt !== extName[imageType]) {
-              fileNameNoExt = fileNameNoExt.substr(1);
-            }
+          const fileName = `${newFileName}-${size}px${extName[imageType]}`;
+          const outputFilePath = path.resolve(path.join(config.buildOptions.project.destination, relativePath, fileName));
 
-            const fileName = `${fileNameNoExt}-${size}px.${extName[imageType]}`;
-            const outputFilePath = path.resolve(path.join(config.buildOptions.project.destination, relativePath, fileName));
-
-            return new Promise(async (resolve, reject) => {
-              sharpImageEdited
-              [imageType](imageOptions || {})
-              .toFile(outputFilePath, () => {
-                if (ENVIRONMENT === 'production' && imageType === 'png') {
-                  execFile(pngquant, [
-                    '--quality', `${imageOptions.quality[0]}-${imageOptions.quality[1]}`,
-                    '--skip-if-larger',
-                    '--verbose',
-                    '-f',
-                    '-o', outputFilePath,
-                    outputFilePath
-                  ], (err) => {
-                    resolve();
-                  });
-                } else {
-                  resolve();
-                }
+          // Take the resized image
+          sharpImageResized
+          // Convert to different type
+          [imageType](imageOptions || {})
+          // Save image to file
+          .toFile(outputFilePath)
+          // If in production, run pngquant to minify png images
+          .then(info => {
+            if (ENVIRONMENT === 'production' && imageType === 'png') {
+              execFile(pngquant, [
+                '--quality', `${imageOptions.quality[0]}-${imageOptions.quality[1]}`,
+                '--skip-if-larger',
+                '--verbose',
+                '-f',
+                '-o', outputFilePath,
+                outputFilePath
+              ], (err) => {
+                resolveFormat();
               });
-            });
-          }))
-          .then(() => resolve());
-        }));
+            } else {
+              // Otherwise just resolve
+              resolveFormat();
+            }
+          });
+        })
+      );
 
-        await Promise.all(promises);
+      return Promise.all(typePromises).then(resolveSize);
+    })
+  );
 
-        cb(null);
-      }
-    ));
-  });
+  await Promise.all(sizePromises);
 }
 
 /**
