@@ -30,36 +30,57 @@ Depending on whether you have provided locations for the processes below, the bu
 
 
 ## Arguments & flags
-You can provide a single optional argument to run the Ziggurat Toolchain with a specific build process.
+You can provide a single optional modifier to run the Ziggurat Toolchain with a specific build process.
+
 
 ```bash
-$ npm run ziggurat [args] [-- --flag <value>]
+$ npm run watch[:modifier] [-- --flag <value>]
 
-$ npm run ziggurat
-# Default. Clean, build and watch for changes for all files.
+$ npm run watch
+# Clean, build and watch for changes.
 
-$ npm run ziggurat deploy
-# Clean, build for deployment (no sourcemaps) and watch for changes for all files.
+$ npm run watch:skipImages
+# Don't clean, build but skip image optimization and watch for changes.
 
-$ npm run ziggurat skipFavicons
-# Clean, build but skip favicons generation and watch for changes for all files.
+$ npm run watch:production
+# Clean, build for production (no sourcemaps, optimize images) and watch for changes.
 
-$ npm run ziggurat skipImageAssets
-# Don't clean, build but skip generating favicons and images, watch for all files.
+$ npm run watch:production:skipImages
+# Don't clean, build for production but skip image optimization and watch for changes.
+
+$ npm run build [default]
+# Clean, build.
+
+$ npm run build:skipImages
+# Don't clean, build but skip image optimization.
+
+$ npm run build:production
+# Clean, build for production (no sourcemaps, optimize images).
+
+$ npm run build:production:skipImages
+# Don't clean, build for production but skip image optimization.
 ```
 
 ### Flags
-To add a flag, you have to type double dashes `--` after the argument list. The `--project` flag is required.
+To add a flag, you have to type double dashes `--` after the build process. The `--project` flag is required.
 
 ```bash
-$ npm run ziggurat -- --project your-project/
+$ npm run watch -- --project your-project/
+```
+
+### Production mode
+For your final build, you can choose to run the `watch` or `build` process with the `production` modifier.
+
+```bash
+$ npm run watch:production -- --project your-project/
+$ npm run build:production -- --project your-project/
 ```
 
 ### Debug mode
-To have more verbosity from Ziggurat, you can run Ziggurat in debug mode:
+To run Ziggurat in verbose mode, start Ziggurat in debug mode:
 
 ```bash
-$ npm run ziggurat-debug [args] [-- --flag <value>]
+$ npm run watch:debug -- --project your-project/
 ```
 
 

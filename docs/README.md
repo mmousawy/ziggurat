@@ -27,13 +27,13 @@ Ziggurat consists of two parts:
 - SCSS to CSS prefixing and compilation using [Autoprefixer](https://github.com/postcss/autoprefixer) and [node-sass](https://github.com/sass/node-sass)
 - ES6 uglification and transpilation to ES5 using [Rollup](https://github.com/rollup/rollup) and [Terser](https://github.com/terser-js/terser)
 - SVG inlining (for SCSS and HTML)
-- Automatic image resizing through [gulp-responsive](https://github.com/mahnunchik/gulp-responsive)
+- Automatic image resizing and optimization with [Sharp](https://github.com/lovell/sharp) and [pngquant](https://github.com/kornelski/pngquant)
 - Favicons/manifest generation using [Favicons](https://github.com/itgalaxy/favicons)
 
 
 ## Example
-There are a few examples on in the [examples folder of Ziggurat GitHub repo](https://github.com/mmousawy/ziggurat/tree/master/example). To see Ziggurat in action you can take a look at [my personal website](https://murtada.nl).
+There are a few examples available in the [examples folder of Ziggurat GitHub repo](https://github.com/mmousawy/ziggurat/tree/master/example). To see Ziggurat in action you can take a look at [my personal website](https://murtada.nl).
 
 
 ## Donate
-Please consider donating if you think Ziggurat is helpful to you or that my work is valuable. I am happy if you can [help me buy a cup of coffee](https://paypal.me/MalMousawy). ☕️
+Please consider donating if you think Ziggurat is helpful to you or that my work is valuable. I am happy if you can [buy me a cup of coffee](https://paypal.me/MalMousawy). ☕️
