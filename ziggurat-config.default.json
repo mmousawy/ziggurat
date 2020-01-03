@@ -8,7 +8,7 @@
       "port": 5050
     },
     "pages": [
-      "/**/*.php"
+      "**/*.php"
     ],
     "scss": {
       "source": "scss/style.scss",
@@ -18,29 +18,50 @@
       "browserList": "last 1 version, chrome > 70, not dead"
     },
     "javascript": {
-      "source": "script/script.js",
+      "source": [ "script/script.js" ],
       "destination": "script.min.js",
-      "libs": "script/lib/*.js"
+      "libs": [ "script/lib/*.js" ]
     },
-    "images": {
-      "jpg": [
-        "assets/img/**/*.jpg"
-      ],
-      "png": [
-        "assets/img/**/*.png"
-      ],
-      "sizes": {
-        "jpg": [
-          512,
-          1024
+    "images": [
+      {
+        "source": [
+          "assets/images/**/*.jpg"
         ],
-        "png": [
+        "sizes": [
           512,
           1024,
           1920
-        ]
+        ],
+        "types": {
+          "webp": {
+            "quality": 80
+          },
+          "jpeg": {
+            "quality": 80
+          }
+        }
+      },
+
+      {
+        "source": [
+          "assets/images/**/*.png"
+        ],
+        "sizes": [
+          512,
+          1024,
+          1920
+        ],
+        "types": {
+          "webp": {
+            "quality": 80
+          },
+          "png": {
+            "quality": [50, 100],
+            "speed": 1
+          }
+        }
       }
-    },
+    ],
     "svgo": {
       "encode": true
     },
