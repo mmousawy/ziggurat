@@ -7,7 +7,7 @@
 #zigg:date        = `2019-08-03`
 #zigg:cover-image = `assets/img/first-post{$size}.jpg`
 #zigg:cover-alt   = `First blog post cover image`
-#zigg:template    = `./template/blog-post.php`
+#zigg:template    = `blog-post`
 ?>
 
 Venenatis nibh vestibulum a volutpat orci torquent habitasse massa ullamcorper a facilisis interdum dictumst himenaeos ante eu non suspendisse dapibus pretium tellus ac aenean. Egestas platea cras proin orci egestas torquent nec amet et imperdiet aenean proin parturient faucibus sagittis nec. Cursus proin interdum sed parturient litora vivamus ad aliquet elit a maecenas in magnis phasellus viverra sodales parturient scelerisque scelerisque a congue a commodo etiam vestibulum. Senectus vestibulum hendrerit quisque vivamus himenaeos a ridiculus non metus ullamcorper parturient taciti conubia massa malesuada eu mattis parturient a nam gravida non. Cubilia ultricies mi condimentum adipiscing a penatibus urna curae scelerisque malesuada a enim erat tempor enim.

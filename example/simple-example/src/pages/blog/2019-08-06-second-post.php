@@ -7,7 +7,7 @@
 #zigg:date        = `2019-08-06`
 #zigg:cover-image = `assets/img/second-post{$size}.jpg`
 #zigg:cover-alt   = `Second blog post cover image`
-#zigg:template    = `./template/blog-post.php`
+#zigg:template    = `blog-post`
 ?>
 
 Lorem ipsum dolor sit amet consectetur adipisicing elit. Non in neque libero ad autem magni eos aut iure maxime unde dicta recusandae deserunt alias magnam, eligendi quisquam accusantium consequuntur officiis!
