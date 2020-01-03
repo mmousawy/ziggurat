@@ -41,7 +41,6 @@
           }
         }
       },
-
       {
         "source": [
           "assets/images/**/*.png"
