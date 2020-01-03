@@ -25,7 +25,7 @@
     "images": [
       {
         "source": [
-          "assets/images/**/*.jpg"
+          "assets/img/**/*.jpg"
         ],
         "sizes": [
           512,
@@ -43,7 +43,7 @@
       },
       {
         "source": [
-          "assets/images/**/*.png"
+          "assets/img/**/*.png"
         ],
         "sizes": [
           512,

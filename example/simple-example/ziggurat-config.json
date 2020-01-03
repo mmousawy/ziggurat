@@ -8,7 +8,7 @@
       "port": 5050
     },
     "pages": [
-      "/**/*.php"
+      "**/*.php"
     ],
     "scss": {
       "source": "scss/style.scss",
@@ -18,9 +18,9 @@
       "browserList": "last 1 version, chrome > 70, not dead"
     },
     "javascript": {
-      "source": "script/script.js",
+      "source": [ "script/script.js" ],
       "destination": "script.min.js",
-      "libs": "script/lib/*.js"
+      "libs": [ "script/lib/*.js" ]
     },
     "images": [
       {
