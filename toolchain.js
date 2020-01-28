@@ -447,7 +447,7 @@ function scssTask() {
  */
 function inlineSvgHTML(file, cb) {
   return async (file, cb) => {
-    const urlPattern = /<img\s?(.+)?\ssrc="([^"]+\/_.+svg)"([^>]+)?>/gmi;
+    const urlPattern = /<img\s?(.+)?\ssrc="inline:([^"]+\/.+svg)"([^>]+)?>/gmi;
     let fileContents = file.contents.toString('utf8');
     let urlMatch, svgPath, svgContents, svgAttributes;
 
@@ -472,7 +472,7 @@ function inlineSvgHTML(file, cb) {
 
         urlPattern.lastIndex = (urlMatch.index + 1);
       } else {
-        console.log(`Inline SVG in HTML: File: ${path.join(config.buildOptions.project.source, svgPath)} does not exist`);
+        console.log(chalk.red(`[Ziggurat]: Inline SVG in HTML: File: ${path.join(config.buildOptions.project.source, svgPath)} does not exist`));
       }
     }
 
@@ -638,8 +638,7 @@ function watchTask() {
     { cwd: config.buildOptions.project.source },
     scssTask);
 
-  gulp.watch(
-    config.buildOptions.javascript.source.concat(config.buildOptions.javascript.libs),
+  gulp.watch(config.buildOptions.javascript.watch,
     { cwd: config.buildOptions.project.source },
     gulp.series(jsTask, reload));
 }

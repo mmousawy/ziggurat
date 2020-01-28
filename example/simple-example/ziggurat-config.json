@@ -19,6 +19,7 @@
     },
     "javascript": {
       "source": [ "script/script.js" ],
+      "watch": "js/**/*.js",
       "destination": "script.min.js",
       "libs": [ "script/lib/*.js" ]
     },
@@ -29,18 +30,15 @@
         ],
         "sizes": [
           512,
-          1024,
-          1920
+          1024
         ],
         "types": {
-          "webp": {
-            "quality": 80
-          },
           "jpeg": {
             "quality": 80
           }
         }
       },
+
       {
         "source": [
           "assets/img/**/*.png"
@@ -51,9 +49,6 @@
           1920
         ],
         "types": {
-          "webp": {
-            "quality": 80
-          },
           "png": {
             "quality": [50, 100],
             "speed": 1
