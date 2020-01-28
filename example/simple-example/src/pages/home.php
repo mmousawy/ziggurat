@@ -9,6 +9,10 @@
 
 This is an example website for Ziggurat. It shows off a few features, including:
 
+This is a translated line of text.
+
+Testing this stuff.
+
   - dynamic page indexing
   - page routing
   - templating

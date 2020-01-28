@@ -2,7 +2,7 @@
 #zigg:title    = `Blog`
 #zigg:slug     = `blog`
 #zigg:priority = `0.8`
-#zigg:order    = `2`
+#zigg:order    = `3`
 
 $blogPosts = $Ziggurat->list('blog', true);
 

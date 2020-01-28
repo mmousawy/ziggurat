@@ -72,7 +72,8 @@
     "otherAssets": {
       "source": [
         "robots.txt",
-        "humans.txt"
+        "humans.txt",
+        "i18n-translation.json"
       ]
     }
   }

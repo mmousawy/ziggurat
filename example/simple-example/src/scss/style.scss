@@ -1,6 +1,13 @@
 $page-max-width: 50rem;
 
+html {
+  min-height: 100vh;
+}
+
 body {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
   margin: 0;
   font-family: sans-serif;
 }
@@ -91,4 +98,24 @@ img {
 .blog-item__title {
   font-size: 1.25em;
   margin-bottom: .25em;
+}
+
+footer {
+  margin-top: auto;
+  background: lighten(slateblue, 35%);
+  padding: 1.5rem 0;
+
+  .wrapper {
+    display: flex;
+  }
+}
+
+.languages {
+  margin-left: auto;
+
+  a {
+    + a {
+      margin-left: .75em;
+    }
+  }
 }

@@ -2,7 +2,7 @@
 #zigg:title    = `About`
 #zigg:slug     = `about`
 #zigg:priority = `0.7`
-#zigg:order    = `3`
+#zigg:order    = `4`
 ?>
 <h1>About</h1>
 
