@@ -3,8 +3,8 @@
  * Ziggurat Core.
  *
  * A PHP-based URL router that reads specific metadata in PHP files to index and create
- * a dynamic page structure. The core also provides other features like templating,
- * listing child-pages and built-in Markdown support.
+ * a dynamic website structure. Other features include: templating, listing child-pages,
+ * internationalization and built-in Markdown support.
  *
  * @author  Murtada al Mousawy <https://murtada.nl>
  * @link    https://github.com/mmousawy/ziggurat
@@ -63,6 +63,25 @@ class Ziggurat
 
     $this->options = array_replace_recursive($this->options, $options);
 
+    $this->i18nSupport = false;
+
+    if (isset($this->options['i18n']) && is_array($this->options['i18n'])) {
+      $this->i18nSupport = true;
+      $this->i18nMap = [];
+
+      if (isset($this->options['i18nMap'])) {
+        $this->options['i18nMap'] = json_decode(file_get_contents($this->options['i18nMap']), true);
+      }
+
+      foreach ($this->options['i18n'] as $lang => $value) {
+        if ($lang !== 'default') {
+          $this->i18nMap[$lang] = [];
+        }
+      }
+
+      $this->switchLanguage(isset($_COOKIE['lang']) ? $_COOKIE['lang'] : $this->options['i18n']['default']);
+    }
+
     if (isset($options['template'])) {
       $this->loadTemplate($options['template']);
     }
@@ -76,6 +95,47 @@ class Ziggurat
     if (isset($this->options['error'])) {
       register_shutdown_function([ $this, 'shutDownHandler' ]);
     }
+  }
+
+
+  public function switchLanguage($language = ''): void
+  {
+    if (!isset($this->options['i18n'][$language])) {
+      throw new \Exception('Language "'. $language . '" not available.');
+    }
+
+    $this->currentLanguage = $language;
+    $this->currentLanguageLong = $this->options['i18n'][$language];
+
+    setcookie('lang', $language, time() + 60*60*24*30);
+  }
+
+
+  public function translatePage(&$page): void
+  {
+    if (!isset($this->i18nMap[$this->currentLanguage][$page['path']])) {
+      // TODO: Throw warning when page is not found in i18n map.
+
+      return;
+    }
+
+    if (isset($this->options['i18nMap'])) {
+      $currentMap = $this->options['i18nMap'][$this->currentLanguage][$page['path']];
+    } else {
+      $currentMap = $this->i18nMap[$this->currentLanguage][$page['path']];
+    }
+
+    $pattern = '/{i18n:\s*.*?\s*}/ms';
+
+    $index = 0;
+
+    $page['content'] = preg_replace_callback($pattern, function ($match) use (&$index, $currentMap) {
+      $translation = $currentMap[$index];
+
+      $index++;
+
+      return $translation;
+    }, $page['content']);
   }
 
 
@@ -211,8 +271,38 @@ class Ziggurat
         }
       }
 
+      if ($this->i18nSupport) {
+        /**
+         * Index all lines of text to be translated.
+         * Match the following pattern:
+         * {i18n: value to be translated}
+         */
+
+        $pattern = '/{i18n:\s*(.*?)\s*}/ms';
+
+        preg_match_all($pattern, $fileContents, $matches, PREG_SET_ORDER);
+
+        foreach ($matches as $match) {
+
+          foreach ($this->options['i18n'] as $lang => $value) {
+            if ($lang !== 'default') {
+              if (!isset($this->i18nMap[$lang][$page['path']])) {
+                $this->i18nMap[$lang][$page['path']] = [];
+              }
+
+              array_push($this->i18nMap[$lang][$page['path']], $match[1]);
+
+              $this->i18nMap[$lang][$page['path']];
+            }
+          }
+        }
+      }
+
       array_push($this->pages, $page);
     }
+
+    file_put_contents($this->options['base_dir'] . '/' . 'i18n-map.json', json_encode($this->i18nMap, JSON_PRETTY_PRINT));
+
 
     /**
      * Sort pages
@@ -423,6 +513,10 @@ class Ziggurat
     })();
 
     $page['content'] = ob_get_clean();
+
+    if ($this->i18nSupport) {
+      $this->translatePage($page);
+    }
 
     // Render markdown file with Parsedown
     if ((isset($page['type']) && $page['type'] == 'markdown') || (isset($page['properties']['type']) && $page['properties']['type'] == 'markdown')) {
