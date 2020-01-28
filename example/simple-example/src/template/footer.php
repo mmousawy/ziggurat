@@ -1,7 +1,7 @@
 </main>
 <footer>
   <div class="wrapper">
-    Current language: <?= $Ziggurat->currentLanguageLong ?>
+    {i18n: Current language}: <?= $Ziggurat->currentLanguageLong ?>
     <div class="languages">
     <?php
 

@@ -74,7 +74,7 @@ class Ziggurat
       }
 
       foreach ($this->options['i18n'] as $lang => $value) {
-        if ($lang !== 'default') {
+        if ($lang !== 'default' && $lang !== $this->options['i18n']['default']) {
           $this->i18nMap[$lang] = [];
         }
       }
@@ -111,31 +111,45 @@ class Ziggurat
   }
 
 
-  public function translatePage(&$page): void
+  public function translatePage($page): string
   {
+    $defaultLanguage = ($this->currentLanguage === $this->options['i18n']['default']);
+
     if (!isset($this->i18nMap[$this->currentLanguage][$page['path']])) {
-      // TODO: Throw warning when page is not found in i18n map.
-
-      return;
+      $defaultLanguage = true;
     }
 
-    if (isset($this->options['i18nMap'])) {
-      $currentMap = $this->options['i18nMap'][$this->currentLanguage][$page['path']];
-    } else {
-      $currentMap = $this->i18nMap[$this->currentLanguage][$page['path']];
+    $currentMap = [];
+
+    if (!$defaultLanguage) {
+      if (isset($this->options['i18nMap'])) {
+        if (!isset($this->options['i18nMap'][$this->currentLanguage][$page['path']])) {
+          throw new \Exception('Missing page entry "'. $page['path'] . '" in translation map.');
+        }
+
+        $currentMap = $this->options['i18nMap'][$this->currentLanguage][$page['path']];
+      } else {
+        $currentMap = $this->i18nMap[$this->currentLanguage][$page['path']];
+      }
     }
 
-    $pattern = '/{i18n:\s*.*?\s*}/ms';
+    $pattern = '/{i18n:\s*(.*?)\s*}/ms';
 
     $index = 0;
 
-    $page['content'] = preg_replace_callback($pattern, function ($match) use (&$index, $currentMap) {
-      $translation = $currentMap[$index];
+    $translatedPage = preg_replace_callback($pattern, function ($match) use (&$index, $currentMap, $defaultLanguage) {
+      $translation = $defaultLanguage
+        ? $match[1]
+        : (isset($currentMap[$index])
+          ? $currentMap[$index]
+          : $match[1]);
 
       $index++;
 
       return $translation;
     }, $page['content']);
+
+    return $translatedPage;
   }
 
 
@@ -214,9 +228,11 @@ class Ziggurat
         'properties' => []
       ];
 
-      $page['path'] = $file[0];
-
+      $page['path'] = str_replace('\\', '/', $file[0]);
+      
       $fileContents = file_get_contents($page['path']);
+      
+      $page['raw_content'] = $fileContents;
 
       /**
        * Get page character count, words count and page read time based on avg. wpm.
@@ -271,32 +287,7 @@ class Ziggurat
         }
       }
 
-      if ($this->i18nSupport) {
-        /**
-         * Index all lines of text to be translated.
-         * Match the following pattern:
-         * {i18n: value to be translated}
-         */
-
-        $pattern = '/{i18n:\s*(.*?)\s*}/ms';
-
-        preg_match_all($pattern, $fileContents, $matches, PREG_SET_ORDER);
-
-        foreach ($matches as $match) {
-
-          foreach ($this->options['i18n'] as $lang => $value) {
-            if ($lang !== 'default') {
-              if (!isset($this->i18nMap[$lang][$page['path']])) {
-                $this->i18nMap[$lang][$page['path']] = [];
-              }
-
-              array_push($this->i18nMap[$lang][$page['path']], $match[1]);
-
-              $this->i18nMap[$lang][$page['path']];
-            }
-          }
-        }
-      }
+      $this->i18nIndex($page);
 
       array_push($this->pages, $page);
     }
@@ -341,6 +332,37 @@ class Ziggurat
     $this->generateSiteMap();
 
     return true;
+  }
+
+
+  public function i18nIndex($page): void
+  {
+    if ($this->i18nSupport) {
+      /**
+       * Index all lines of text to be translated.
+       * Match the following pattern:
+       * {i18n: value to be translated}
+       */
+
+      $pattern = '/{i18n:\s*(.*?)\s*}/ms';
+
+      preg_match_all($pattern, $page['raw_content'], $matches, PREG_SET_ORDER);
+
+      foreach ($matches as $match) {
+
+        foreach ($this->options['i18n'] as $lang => $value) {
+          if ($lang !== 'default' && $lang !== $this->options['i18n']['default']) {
+            if (!isset($this->i18nMap[$lang][$page['path']])) {
+              $this->i18nMap[$lang][$page['path']] = [];
+            }
+
+            array_push($this->i18nMap[$lang][$page['path']], $match[1]);
+
+            $this->i18nMap[$lang][$page['path']];
+          }
+        }
+      }
+    }
   }
 
 
@@ -513,9 +535,9 @@ class Ziggurat
     })();
 
     $page['content'] = ob_get_clean();
-
+    
     if ($this->i18nSupport) {
-      $this->translatePage($page);
+      $page['content'] = $this->translatePage($page);
     }
 
     // Render markdown file with Parsedown
@@ -534,15 +556,33 @@ class Ziggurat
       ob_start();
 
       foreach ($this->options['template'] as $partName => $templatePart) {
+        $partPath = null;
+        $doTranslation = true;
+        
         if ($partName === 'body') {
           $bodyTemplate = isset($page['properties']['template'])
                             ? $page['properties']['template']
                             : $templatePart;
+          
+          $doTranslation = isset($page['properties']['template']);
 
-          include $this->options['templateDir'] . '/' . $bodyTemplate . '.php';
+          $partPath = $this->options['templateDir'] . '/' . $bodyTemplate . '.php';
         } else {
-          include $this->options['templateDir'] . '/' . $templatePart . '.php';
+          $partPath = $this->options['templateDir'] . '/' . $templatePart . '.php';
         }
+
+        ob_start();
+        include $partPath;
+        $renderedPart = ob_get_clean();
+
+        if ($this->i18nSupport && $doTranslation) {
+          $renderedPart = $this->translatePage([
+            'path' => $partPath,
+            'content' => $renderedPart
+          ]);
+        }
+
+        echo $renderedPart;
       }
 
       $renderedPage = ob_get_clean();
@@ -593,6 +633,28 @@ class Ziggurat
       if ($template['header'] && $template['body'] && $template['footer']) {
         $this->options['template'] = $template;
       }
+    }
+
+    if (!$this->i18nSupport) {
+      return true;
+    }
+
+    foreach ($this->options['template'] as $partName => $templatePart) {
+      $page = [];
+
+      if ($partName === 'body') {
+        $bodyTemplate = isset($page['properties']['template'])
+                          ? $page['properties']['template']
+                          : $templatePart;
+
+        $page['path'] = $this->options['templateDir'] . '/' . $bodyTemplate . '.php';
+      } else {
+        $page['path'] =  $this->options['templateDir'] . '/' . $templatePart . '.php';
+      }
+
+      $page['raw_content'] = file_get_contents($page['path']);
+
+      $this->i18nIndex($page);
     }
 
     return true;

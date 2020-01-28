@@ -10,7 +10,7 @@
 {i18n: This page uses the internatalization feature of Ziggurat to translate the text on the page. }
 
 <p style="white-space: pre">{i18n:
-Ziggurat automatically generates translation.
+Ziggurat automatically generates a translation map for the whole website.
 It also supports multiline paragraphs.
 }
 </p>

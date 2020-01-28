@@ -1,16 +1,12 @@
 {
-    "en": {
-        ".\/pages\/i18n.php": [
-            "Internationalization example page",
-            "This page uses the internatalization feature of Ziggurat to translate the text on the page.",
-            "Ziggurat automatically generates translation.\nIt also supports multiline paragraphs."
-        ]
-    },
     "nl": {
+        ".\/template\/footer.php": [
+            "Huidige taal"
+        ],
         ".\/pages\/i18n.php": [
             "Internationalisatievoorbeeldpagina",
             "Deze pagina gebruikt de internationaliseringsfunctie van Ziggurat om de tekst op de pagina te vertalen.",
-            "Ziggurat genereert automatisch vertaling.\nHet ondersteunt ook alinea's met meerdere regels."
+            "Ziggurat genereert automatisch een vertaalkaart voor de hele website.\nHet ondersteunt ook alinea's met meerdere regels."
         ]
     }
 }
