@@ -229,9 +229,9 @@ class Ziggurat
       ];
 
       $page['path'] = str_replace('\\', '/', $file[0]);
-      
+
       $fileContents = file_get_contents($page['path']);
-      
+
       $page['raw_content'] = $fileContents;
 
       /**
@@ -535,7 +535,7 @@ class Ziggurat
     })();
 
     $page['content'] = ob_get_clean();
-    
+
     if ($this->i18nSupport) {
       $page['content'] = $this->translatePage($page);
     }
@@ -558,12 +558,12 @@ class Ziggurat
       foreach ($this->options['template'] as $partName => $templatePart) {
         $partPath = null;
         $doTranslation = true;
-        
+
         if ($partName === 'body') {
           $bodyTemplate = isset($page['properties']['template'])
                             ? $page['properties']['template']
                             : $templatePart;
-          
+
           $doTranslation = isset($page['properties']['template']);
 
           $partPath = $this->options['templateDir'] . '/' . $bodyTemplate . '.php';
