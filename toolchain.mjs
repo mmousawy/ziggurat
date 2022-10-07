@@ -11,15 +11,16 @@
  */
 
 // Base packages
-const gulp         = require('gulp');
-const fs           = require('fs');
-const del          = require('del');
-const path         = require('path');
-const argv         = require('yargs').argv;
-const chalk        = require('chalk');
-const execFile     = require('child_process').execFile;
-const readline     = require('readline');
-const through2     = require('through2');
+import gulp from 'gulp';
+import fs from 'fs';
+import { deleteSync } from 'del';
+import path from 'path';
+import yargs from 'yargs'
+import { hideBin } from 'yargs/helpers';
+import chalk from 'chalk';
+import { execFile } from 'child_process';
+import readline from 'readline';
+import through2 from 'through2';
 
 // ASCII flair
 console.log(chalk.hex('#9B4E55').bold(`      _                         __
@@ -32,6 +33,8 @@ console.log(chalk.hex('#9B4E55').bold(`      _                         __
 /**
  * Load the gulp config.
  */
+const argv = yargs(hideBin(process.argv)).argv;
+
 const base = path.resolve((argv.project || '.'));
 
 process.cwd(base);
@@ -43,42 +46,45 @@ if (!fs.existsSync(configLocation)) {
   process.exit(5);
 }
 
-const config = require(configLocation);
+let config = await import(`file://${ configLocation }`, { assert: { type: "json" } });
+config = config.default;
+
 config.buildOptions.project.source = path.join(base, config.buildOptions.project.source);
 config.buildOptions.project.destination = path.join(base, config.buildOptions.project.destination);
 
 // Gulp helper packages
-const notify       = require('gulp-notify');
-const cache        = require('gulp-cached');
-const gulpif       = require("gulp-if");
-const rename       = require('gulp-rename');
-const map          = require('map-stream');
+import notify from 'gulp-notify';
+import cache from 'gulp-cached';
+import gulpif from "gulp-if";
+import map from 'map-stream';
 
 // SVG packages
-const querystring  = require('querystring');
-const csso         = require('gulp-csso');
+import querystring from 'querystring';
+import csso from 'gulp-csso';
 
 // SCSS packages
-const scss         = require('gulp-sass');
-const autoprefixer = require('gulp-autoprefixer');
-const sourcemaps   = require('gulp-sourcemaps');
+import gulpSass from 'gulp-sass';
+import nodeSass from 'node-sass';
+const scss = gulpSass(nodeSass);
+import autoprefixer from 'gulp-autoprefixer';
+import sourcemaps from 'gulp-sourcemaps';
 
 // JavaScript packages
-const rollup       = require('rollup').rollup;
-const terser       = require('rollup-plugin-terser').terser;
+import { rollup } from 'rollup';
+import { terser } from 'rollup-plugin-terser';
 
 // Image packages
-const sharp        = require('sharp');
-const pngquant     = require('pngquant-bin');
-const favicons     = require('gulp-favicons');
+import sharp from 'sharp';
+import pngquant from 'pngquant-bin';
+import favicons from 'gulp-favicons';
 
 // Development server packages
-const connect      = require('gulp-connect-php');
-const browserSync  = require('browser-sync').create();
+import connect from 'gulp-connect-php';
+import browserSync from 'browser-sync';
 
 // Initialize SVGO
-const SVGO = require('svgo');
-const svgo = new SVGO(config.svgo || {});
+import { loadConfig, optimize as optimzeSVG } from 'svgo';
+const svgoConfig = loadConfig(config.svgo);
 let ENVIRONMENT = 'development';
 
 /**
@@ -213,8 +219,8 @@ function reload(done) {
  * Clean the destination folder.
  */
 async function cleanTask() {
-  await del(config.buildOptions.project.destination);
-  await fs.mkdirSync(config.buildOptions.project.destination);
+  deleteSync(config.buildOptions.project.destination);
+  fs.mkdirSync(config.buildOptions.project.destination);
 
   console.info(chalk.cyan(`[Ziggurat] Done cleaning destination: ${config.buildOptions.project.destination}`));
 
@@ -532,7 +538,7 @@ function inlineSvgCSS(file, cb) {
         }
 
         // Attempt to optimise the SVG file
-        svgContents = await svgo.optimize(svgContents);
+        svgContents = await optimzeSVG(svgContents, svgoConfig);
 
         // Format the interpolated and optimized SVG file as a data URI
         svgContents = (
